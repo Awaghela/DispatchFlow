@@ -1,0 +1,19 @@
+# Use REAL AWS SQS instead of LocalStack. Only the worker talks to SQS, so only the worker changes;
+# PostgreSQL, Redis, the API and the dashboard keep running locally.
+#
+#   1. cp .env.aws.example .env.aws   and fill it in (see docs/AWS_SETUP.md, "Quick start")
+#   2. docker compose --env-file .env.aws -f docker-compose.yml -f docker-compose.aws.yml up --build -d
+#      (or: make aws-up)
+services:
+  worker:
+    environment:
+      AWS_ENDPOINT_URL: ""                       # empty = the real AWS endpoint, not LocalStack
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_DEFAULT_REGION: ${AWS_REGION:-us-east-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?put AWS_ACCESS_KEY_ID in .env.aws}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?put AWS_SECRET_ACCESS_KEY in .env.aws}
+      SQS_QUEUE_URL: ${SQS_QUEUE_URL:?put SQS_QUEUE_URL in .env.aws}
+      SQS_DLQ_URL: ${SQS_DLQ_URL:?put SQS_DLQ_URL in .env.aws}
+      SQS_AUTO_CREATE: "false"                   # queues are created once by infra/aws/create_sqs.sh
+      SQS_WAIT_SECONDS: "20"                     # long polling: fewer, cheaper requests
+      DEPTH_POLL_INTERVAL: "15"                  # queue-depth checks are SQS requests too; keep them rare

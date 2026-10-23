@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.run/
+.env
+.pytest_cache/
+.env.aws

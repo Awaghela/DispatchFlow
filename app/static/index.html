@@ -1,0 +1,1473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DispatchFlow</title>
+<meta name="description" content="Real-time delivery dispatch: live map, merchant and customer views, metrics and load-test results.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23101A2A'/%3E%3Cpath d='M7 22c7 0 5-12 12-12h6' fill='none' stroke='%234F7BEF' stroke-width='3.2' stroke-linecap='round'/%3E%3Ccircle cx='7' cy='22' r='3.2' fill='%23E06A0B'/%3E%3Ccircle cx='25' cy='10' r='3.2' fill='%231FA877'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Archivo DF";src:url(/static/fonts/archivo-wdth.woff2) format("woff2-variations"),url(/static/fonts/archivo-wdth.woff2) format("woff2");
+  font-weight:100 900;font-stretch:62% 125%;font-display:swap}
+
+:root{
+  color-scheme:light;
+  --page:#E8ECF0; --sheet:#FFFFFF; --sheet-2:#F3F5F8; --ink:#101A2A; --ink-2:#465264; --ink-3:#687587;
+  --line:#D5DBE2; --line-2:#E6EAEF; --focus:#2453D9;
+  --band:#101A2A; --band-2:#18263C; --band-ink:#EEF2F7; --band-ink-2:#A9B6C7; --band-line:#2A3A52;
+  --land:#F2F4F1; --water:#D6E3EE; --park:#DDEBDD; --street:#E3E7EA; --street-major:#D3D9DF; --map-label:#8C97A4;
+  --s-wait:#E06A0B; --s-assigned:#2453D9; --s-onway:#A8329A; --s-done:#0B8A5F; --s-failed:#C92A3E; --s-cancel:#7C8796;
+  --ok:#0B8A5F; --warn:#B86200; --bad:#C92A3E;
+  --shadow:0 1px 0 rgba(16,26,42,.04),0 8px 24px -16px rgba(16,26,42,.25);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0A0F17; --sheet:#111926; --sheet-2:#172131; --ink:#E7EDF4; --ink-2:#B2BDCB; --ink-3:#8A97A8;
+    --line:#26344A; --line-2:#1C283A; --focus:#7FA2FF;
+    --band:#0E1726; --band-2:#16233A; --band-ink:#EEF2F7; --band-ink-2:#9FAEC2; --band-line:#2A3A55;
+    --land:#121C2A; --water:#0B1420; --park:#14271F; --street:#1A2738; --street-major:#25354B; --map-label:#5F6F84;
+    --s-wait:#DC6A12; --s-assigned:#4F7BEF; --s-onway:#BE4FB0; --s-done:#169E6E; --s-failed:#F0566A; --s-cancel:#8592A3;
+    --ok:#22B07E; --warn:#E39A2E; --bad:#F0566A;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 10px 30px -18px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0A0F17; --sheet:#111926; --sheet-2:#172131; --ink:#E7EDF4; --ink-2:#B2BDCB; --ink-3:#8A97A8;
+  --line:#26344A; --line-2:#1C283A; --focus:#7FA2FF;
+  --band:#0E1726; --band-2:#16233A; --band-ink:#EEF2F7; --band-ink-2:#9FAEC2; --band-line:#2A3A55;
+  --land:#121C2A; --water:#0B1420; --park:#14271F; --street:#1A2738; --street-major:#25354B; --map-label:#5F6F84;
+  --s-wait:#DC6A12; --s-assigned:#4F7BEF; --s-onway:#BE4FB0; --s-done:#169E6E; --s-failed:#F0566A; --s-cancel:#8592A3;
+  --ok:#22B07E; --warn:#E39A2E; --bad:#F0566A;
+  --shadow:0 1px 0 rgba(0,0,0,.2),0 10px 30px -18px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--ink);
+  font:15px/1.5 "Archivo DF",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-stretch:100%;
+  font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+a{color:var(--focus);text-underline-offset:2px}
+.wrap{max-width:1520px;margin:0 auto;padding:0 28px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.num{font-stretch:118%;font-weight:700;letter-spacing:-.01em}
+.muted{color:var(--ink-3)}
+
+/* ---------- the band: brand, views, and the live pipeline ---------- */
+.band{background:var(--band);color:var(--band-ink);border-bottom:1px solid var(--band-line)}
+.top{display:flex;align-items:center;gap:24px;padding:16px 0 14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:inherit}
+.brand b{font-size:21px;font-stretch:122%;font-weight:800;letter-spacing:-.02em}
+.views{display:flex;gap:2px;flex-wrap:wrap}
+.views a{color:var(--band-ink-2);text-decoration:none;padding:7px 13px;border-radius:8px;font-weight:500;font-size:14.5px}
+.views a:hover{color:var(--band-ink);background:var(--band-2)}
+.views a[aria-current="page"]{color:var(--band-ink);background:var(--band-2);box-shadow:inset 0 -2px 0 var(--s-assigned)}
+.grow{flex:1}
+.health{display:flex;gap:14px;align-items:center;font-size:13px;color:var(--band-ink-2);flex-wrap:wrap}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ink-3);vertical-align:1px;margin-right:6px}
+.dot.ok{background:#2FCB8F}.dot.warn{background:#F2A43A}.dot.bad{background:#FF6B7D}
+.dot.ok.beat{animation:beat 2.6s ease-in-out infinite}
+@keyframes beat{50%{opacity:.35}}
+.iconbtn{background:none;border:1px solid var(--band-line);color:var(--band-ink-2);border-radius:8px;padding:5px 9px;font-size:13px}
+.iconbtn:hover{color:var(--band-ink)}
+
+.pipe{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;padding:4px 0 20px;position:relative}
+.node{position:relative;padding:10px 14px 0 0}
+.node .nm{font-size:12.5px;color:var(--band-ink-2);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.node .v{font-size:24px;line-height:1.15;margin-top:4px;font-stretch:120%;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.node .v small{font-size:12.5px;font-weight:500;font-stretch:100%;color:var(--band-ink-2);margin-left:4px;letter-spacing:0}
+.node .sub{font-size:12px;color:var(--band-ink-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wire{position:absolute;left:0;right:14px;top:4px;height:2px;background:var(--band-line);border-radius:2px;overflow:visible}
+.node:first-child .wire{left:4px}
+.node::before{content:"";position:absolute;left:0;top:0;width:10px;height:10px;border-radius:50%;background:var(--band);border:2px solid var(--band-ink-2);z-index:1}
+.node.down::before{border-color:#FF6B7D;background:#FF6B7D}
+.pulse{position:absolute;top:-3px;left:0;width:8px;height:8px;border-radius:50%;pointer-events:none;will-change:transform}
+
+/* ---------- page furniture ---------- */
+main{padding:36px 0 56px}
+.view[hidden]{display:none}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);min-width:0}
+.sheet > header{display:flex;align-items:baseline;gap:12px;padding:16px 20px 0;flex-wrap:wrap}
+.sheet h2{margin:0;font-size:16px;font-weight:650;font-stretch:108%;letter-spacing:-.005em}
+.sheet .hint{margin:2px 20px 0;color:var(--ink-3);font-size:13.5px;max-width:72ch}
+.pad{padding:16px 20px 20px}
+.grid{display:grid;gap:20px}
+.lede{display:flex;align-items:end;gap:24px;flex-wrap:wrap;margin-bottom:20px}
+.lede h1{margin:0;font-size:30px;line-height:1.1;font-stretch:120%;font-weight:800;letter-spacing:-.02em}
+.lede p{margin:6px 0 0;color:var(--ink-2);max-width:70ch}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;background:var(--sheet);padding:3px;gap:2px}
+.seg button{border:0;background:none;padding:5px 11px;border-radius:7px;color:var(--ink-2);font-size:13.5px}
+.seg button[aria-pressed="true"]{background:var(--sheet-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line)}
+.btn{border:1px solid var(--line);background:var(--sheet);border-radius:9px;padding:8px 14px;font-weight:550;color:var(--ink)}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--s-assigned);border-color:var(--s-assigned);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 9px 2px 7px;border-radius:99px;background:var(--sheet-2);color:var(--ink-2);white-space:nowrap;border:1px solid var(--line-2)}
+.chip i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+.st-CREATED,.st-ASSIGNING{color:var(--s-wait)} .st-ASSIGNED{color:var(--s-assigned)} .st-PICKED_UP{color:var(--s-onway)}
+.st-DELIVERED{color:var(--s-done)} .st-FAILED{color:var(--s-failed)} .st-CANCELLED{color:var(--s-cancel)}
+.chip.st-CREATED,.chip.st-ASSIGNING,.chip.st-ASSIGNED,.chip.st-PICKED_UP,.chip.st-DELIVERED,.chip.st-FAILED,.chip.st-CANCELLED{color:var(--ink-2)}
+.chip.st-CREATED i,.chip.st-ASSIGNING i{background:var(--s-wait)} .chip.st-ASSIGNED i{background:var(--s-assigned)}
+.chip.st-PICKED_UP i{background:var(--s-onway)} .chip.st-DELIVERED i{background:var(--s-done)}
+.chip.st-FAILED i{background:var(--s-failed)} .chip.st-CANCELLED i{background:var(--s-cancel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{text-align:left;font-weight:550;color:var(--ink-3);padding:8px 10px;border-bottom:1px solid var(--line)}
+td{padding:8px 10px;border-bottom:1px solid var(--line-2)}
+th.r,td.r{text-align:right}
+tbody tr:last-child td{border-bottom:0}
+.scroll-x{overflow-x:auto}
+.empty{color:var(--ink-3);font-size:14px;padding:24px 20px}
+
+/* ---------- control room ---------- */
+.control{grid-template-columns:minmax(0,1fr) 380px}
+.mapbox{position:relative;padding:0;display:flex;flex-direction:column;overflow:hidden}
+.mapwrap{position:relative;flex:1;min-height:clamp(420px,62vh,760px)}
+.mapwrap canvas{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair}
+.mapbar{display:flex;align-items:center;gap:16px;padding:14px 18px;border-bottom:1px solid var(--line-2);flex-wrap:wrap}
+.mapbar h2{margin:0;font-size:16px;font-weight:650;font-stretch:108%}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.lg-line{width:16px;height:3px;border-radius:2px;display:inline-block}
+.lg-ring{width:10px;height:10px;border-radius:50%;border:2px solid var(--ink-3);display:inline-block}
+.lg-dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.lg-sq{width:9px;height:9px;border-radius:2px;background:var(--ink);display:inline-block}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--sheet);font-size:12.5px;line-height:1.4;padding:7px 10px;border-radius:8px;
+  white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));z-index:5;box-shadow:0 6px 18px -8px rgba(0,0,0,.5)}
+.tip b{font-weight:650}
+.rail{display:grid;gap:20px;align-content:start}
+.figs{display:grid;grid-template-columns:1fr 1fr}
+.fig{padding:16px 18px;border-top:1px solid var(--line-2);border-left:1px solid var(--line-2)}
+.fig:nth-child(-n+2){border-top:0} .fig:nth-child(odd){border-left:0}
+.fig .k{font-size:13px;color:var(--ink-3)}
+.fig .v{font-size:30px;line-height:1.1;margin:4px 0 2px}
+.fig .v small{font-size:13px;font-weight:500;font-stretch:100%;color:var(--ink-3);margin-left:4px;letter-spacing:0}
+.fig .d{font-size:12.5px;color:var(--ink-2)}
+.stack{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px;background:var(--sheet-2)}
+.stack span{display:block;min-width:0;transition:flex-grow .6s ease}
+.dist{display:grid;grid-template-columns:1fr auto;gap:6px 12px;margin-top:14px;font-size:13.5px}
+.dist .n{text-align:right}
+.feed{list-style:none;margin:0;padding:0 8px 8px;max-height:300px;overflow:auto}
+.feed li{display:grid;grid-template-columns:56px 1fr;gap:10px;padding:8px 10px;border-radius:8px;font-size:13.5px;line-height:1.4}
+.feed li.new{animation:flash 1.2s ease-out}
+@keyframes flash{from{background:var(--sheet-2)}to{background:transparent}}
+.feed time{color:var(--ink-3);font-size:12px;padding-top:1px}
+.feed .what{color:var(--ink)}
+.feed .what em{font-style:normal;color:var(--ink-3)}
+.feed .bar{display:inline-block;width:3px;height:12px;border-radius:2px;margin-right:7px;vertical-align:-1px}
+.lower{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr);align-items:start}
+.chart{position:relative;padding:8px 14px 14px}
+.chart svg{display:block;width:100%;overflow:visible}
+.chart .ctip{position:absolute;pointer-events:none;background:var(--ink);color:var(--sheet);font-size:12.5px;padding:7px 10px;border-radius:8px;white-space:nowrap;z-index:5}
+.chart .ctip .sw{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px}
+.chart-legend{display:flex;gap:14px;font-size:12.5px;color:var(--ink-2);padding:10px 20px 0}
+.chart-legend span{display:inline-flex;align-items:center;gap:6px}
+.absorbed{list-style:none;margin:0;padding:6px 20px 16px}
+.absorbed li{display:grid;grid-template-columns:1fr auto;gap:2px 16px;padding:9px 0;border-bottom:1px solid var(--line-2)}
+.absorbed li:last-child{border-bottom:0}
+.absorbed b{font-weight:550;font-size:14px}
+.absorbed span{color:var(--ink-3);font-size:12.5px;grid-column:1}
+.absorbed .n{grid-row:1/3;grid-column:2;align-self:center;font-size:20px}
+
+/* ---------- merchant ---------- */
+.mpick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.mpick button{border:1px solid var(--line);background:var(--sheet);border-radius:9px;padding:6px 11px;font-size:13.5px;color:var(--ink-2);display:inline-flex;gap:8px;align-items:baseline}
+.mpick button b{font-weight:600;color:var(--ink)}
+.mpick button[aria-pressed="true"]{border-color:var(--s-assigned);box-shadow:inset 0 0 0 1px var(--s-assigned)}
+.mstats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin-bottom:20px}
+.mstats .fig{border-top:0;border-left:1px solid var(--line-2)}
+.mstats .fig:first-child{border-left:0}
+.mlayout{grid-template-columns:minmax(0,1fr) 360px}
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.col{background:var(--sheet-2);border:1px solid var(--line-2);border-radius:12px;padding:10px;min-height:280px;min-width:0}
+.col h3{margin:2px 4px 10px;font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+.col h3 .count{margin-left:auto;color:var(--ink-3);font-weight:500}
+.col h3 .bar{width:12px;height:4px;border-radius:2px}
+.ticket{background:var(--sheet);border:1px solid var(--line);border-radius:9px;padding:10px 11px;margin-bottom:8px;font-size:13px;position:relative;overflow:hidden}
+.ticket::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:currentColor}
+.ticket .id{font-weight:650;font-stretch:112%;font-size:14px;color:var(--ink)}
+.ticket .row{display:flex;justify-content:space-between;gap:8px;color:var(--ink-2);margin-top:3px}
+.ticket .row span:last-child{color:var(--ink-3);text-align:right}
+.ticket.arrive{animation:arrive .9s ease-out}
+@keyframes arrive{from{box-shadow:0 0 0 3px color-mix(in srgb,currentColor 35%,transparent)}to{box-shadow:0 0 0 0 transparent}}
+.idem .key{display:flex;gap:8px;align-items:center;margin:10px 0 12px}
+.idem input{flex:1;min-width:0;border:1px solid var(--line);background:var(--sheet-2);border-radius:8px;padding:7px 10px;font-size:13px}
+.idem .acts{display:flex;gap:8px;flex-wrap:wrap}
+.ledger{list-style:none;margin:14px 0 0;padding:0;font-size:13px}
+.ledger li{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;padding:9px 0;border-top:1px solid var(--line-2)}
+.ledger .code{font-weight:700;font-stretch:115%}
+.ledger .code.c201{color:var(--ok)} .ledger .code.c200{color:var(--s-assigned)} .ledger .code.err{color:var(--bad)}
+.ledger small{grid-column:2;color:var(--ink-3)}
+.verdict{margin-top:10px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--ok) 12%,transparent);color:var(--ink);font-size:13.5px}
+.verdict.bad{background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.frames{list-style:none;margin:0;padding:0 0 4px;font-size:12.5px;max-height:330px;overflow:auto}
+.frames li{display:grid;grid-template-columns:58px 1fr auto;gap:8px;padding:6px 20px;border-top:1px solid var(--line-2);align-items:baseline}
+.frames li.new{animation:flash 1.2s ease-out}
+.frames code{font-family:inherit;color:var(--ink)}
+.frames .eid{color:var(--ink-3)}
+.frames .tag{font-size:11.5px;padding:0 6px;border-radius:5px;background:var(--sheet-2);color:var(--ink-2)}
+.frames .tag.rp{background:color-mix(in srgb,var(--s-assigned) 16%,transparent);color:var(--s-assigned)}
+
+/* ---------- customer ---------- */
+.clayout{grid-template-columns:300px minmax(340px,420px) minmax(0,1fr);align-items:start}
+.olist{list-style:none;margin:0;padding:4px 8px 10px}
+.olist button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:2px 8px;width:100%;padding:9px 12px;border-radius:9px;cursor:pointer;font-size:13.5px}
+.olist button:hover{background:var(--sheet-2)}
+.olist button[aria-current="true"]{background:var(--sheet-2);box-shadow:inset 3px 0 0 var(--s-assigned)}
+.olist button:focus-visible{outline:2px solid var(--focus)}
+.olist b{font-weight:600}
+.olist small{color:var(--ink-3);grid-column:1/3}
+.phone{border-radius:34px;padding:14px;background:var(--band);box-shadow:0 30px 60px -30px rgba(10,20,40,.55);max-width:420px;width:100%;margin:0 auto}
+.screen{background:var(--sheet);border-radius:24px;overflow:hidden;min-height:640px;display:flex;flex-direction:column}
+.screen .notch{height:26px;display:flex;justify-content:center;align-items:center}
+.screen .notch i{width:84px;height:6px;border-radius:4px;background:var(--line)}
+.trk-head{padding:4px 22px 12px}
+.trk-head .from{font-size:13px;color:var(--ink-3)}
+.trk-head h3{margin:4px 0 2px;font-size:25px;line-height:1.15;font-stretch:115%;font-weight:750;letter-spacing:-.015em}
+.trk-head p{margin:0;color:var(--ink-2);font-size:14px;min-height:21px}
+.minimap{display:block;width:100%;height:250px}
+.steps{list-style:none;margin:0;padding:18px 22px 22px;display:grid;gap:0}
+.steps li{display:grid;grid-template-columns:22px 1fr auto;gap:12px;align-items:start;position:relative;padding-bottom:18px;font-size:14px}
+.steps li:last-child{padding-bottom:0}
+.steps li::before{content:"";position:absolute;left:10px;top:20px;bottom:-2px;width:2px;background:var(--line)}
+.steps li:last-child::before{display:none}
+.steps li.done::before{background:var(--s-done)}
+.steps .pin{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);background:var(--sheet);position:relative;z-index:1}
+.steps li.done .pin{border-color:var(--s-done);background:var(--s-done)}
+.steps li.done .pin::after{content:"";position:absolute;left:6px;top:3px;width:5px;height:9px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.steps li.now .pin{border-color:var(--s-assigned);box-shadow:0 0 0 4px color-mix(in srgb,var(--s-assigned) 22%,transparent)}
+.steps li.bad .pin{border-color:var(--s-failed);background:var(--s-failed)}
+.steps b{font-weight:600} .steps small{display:block;color:var(--ink-3);font-size:12.5px}
+.steps time{color:var(--ink-3);font-size:12.5px;padding-top:2px}
+.conn{display:inline-flex;align-items:center;font-size:13px;color:var(--ink-2)}
+.wsctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 20px}
+.wsstats{display:flex;gap:18px;padding:0 20px 12px;font-size:13px;color:var(--ink-2);flex-wrap:wrap}
+.wsstats b{color:var(--ink);font-weight:650}
+
+/* ---------- metrics ---------- */
+.mfigs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.mfigs .fig:nth-child(-n+4){border-top:0}
+.mfigs .fig{border-left:1px solid var(--line-2)}
+.mfigs .fig:nth-child(4n+1){border-left:0}
+.mcharts{grid-template-columns:repeat(3,minmax(0,1fr))}
+.links{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;margin-top:4px}
+
+/* ---------- load test ---------- */
+.headline{font-size:clamp(24px,2.7vw,34px);line-height:1.12;font-stretch:118%;font-weight:800;letter-spacing:-.02em;margin:0;max-width:30ch}
+.headline .q{color:var(--ink-3);font-weight:600}
+.facts{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));margin:22px 0}
+.facts .fig{border-top:0;border-left:1px solid var(--line-2)}
+.facts .fig:first-child{border-left:0}
+.ltgrid{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.checks{list-style:none;margin:0;padding:6px 20px 16px}
+.checks li{display:grid;grid-template-columns:22px 1fr;gap:2px 10px;padding:8px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+.checks li:last-child{border-bottom:0}
+.checks .mk{width:18px;height:18px;border-radius:50%;background:var(--ok);position:relative;margin-top:1px}
+.checks .mk::after{content:"";position:absolute;left:6px;top:3px;width:4px;height:8px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.checks .mk.no{background:var(--bad)} .checks .mk.no::after{left:8px;top:3px;width:0;height:10px;border-width:0 2px 0 0;transform:none}
+.checks small{grid-column:2;color:var(--ink-3)}
+.outages{list-style:none;margin:0;padding:4px 20px 16px;font-size:13.5px}
+.outages li{display:grid;grid-template-columns:70px 1fr auto;gap:10px;padding:7px 0;border-bottom:1px solid var(--line-2)}
+.outages li:last-child{border-bottom:0}
+.note{font-size:13px;color:var(--ink-3);margin-top:18px;max-width:90ch}
+
+footer{border-top:1px solid var(--line);padding:18px 0 30px;color:var(--ink-3);font-size:13px}
+footer .wrap{display:flex;gap:18px;flex-wrap:wrap}
+
+@media (max-width:1180px){
+  .control,.mlayout{grid-template-columns:1fr}
+  .lower,.mcharts{grid-template-columns:1fr 1fr}
+  .lower > :first-child,.mcharts > :first-child{grid-column:1/-1}
+  .clayout{grid-template-columns:1fr 1fr}
+  .clayout > :first-child{grid-column:1/-1}
+  .ltgrid{grid-template-columns:1fr}
+  .facts{grid-template-columns:repeat(3,1fr)}
+  .facts .fig:nth-child(4){border-left:0}
+  .facts .fig:nth-child(n+4){border-top:1px solid var(--line-2)}
+  .mstats{grid-template-columns:repeat(3,1fr)}
+  .mstats .fig:nth-child(4){border-left:0}
+  .mstats .fig:nth-child(n+4){border-top:1px solid var(--line-2)}
+}
+@media (max-width:860px){
+  .wrap{padding:0 16px}
+  .pipe{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:14px}
+  .node .v{font-size:20px}
+  .board{grid-template-columns:1fr 1fr}
+  .lower,.mcharts,.clayout{grid-template-columns:1fr}
+  .mfigs{grid-template-columns:1fr 1fr}
+  .mfigs .fig:nth-child(odd){border-left:0} .mfigs .fig:nth-child(n+3){border-top:1px solid var(--line-2)}
+  .mfigs .fig:nth-child(3),.mfigs .fig:nth-child(5),.mfigs .fig:nth-child(7){border-left:0}
+  .facts,.mstats{grid-template-columns:1fr 1fr}
+  .facts .fig,.mstats .fig{border-left:0;border-top:1px solid var(--line-2)}
+  .facts .fig:nth-child(-n+2),.mstats .fig:nth-child(-n+2){border-top:0}
+  .facts .fig:nth-child(even),.mstats .fig:nth-child(even){border-left:1px solid var(--line-2)}
+  .lede h1{font-size:25px}
+  .mapwrap{min-height:360px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="band">
+  <div class="wrap">
+    <div class="top">
+      <a class="brand" href="#control" aria-label="DispatchFlow home">
+        <svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#1B2A44"/><path d="M7 22c7 0 5-12 12-12h6" fill="none" stroke="#4F7BEF" stroke-width="3.2" stroke-linecap="round"/><circle cx="7" cy="22" r="3.2" fill="#E06A0B"/><circle cx="25" cy="10" r="3.2" fill="#1FA877"/></svg>
+        <b>DispatchFlow</b>
+      </a>
+      <nav class="views" aria-label="Views">
+        <a href="#control" data-view="control">Control room</a>
+        <a href="#merchant" data-view="merchant">Merchant</a>
+        <a href="#customer" data-view="customer">Customer</a>
+        <a href="#metrics" data-view="metrics">Metrics</a>
+        <a href="#loadtest" data-view="loadtest">Load test</a>
+      </nav>
+      <div class="grow"></div>
+      <div class="health" aria-live="polite">
+        <span id="h-live"><i class="dot"></i>Connecting</span>
+        <span id="h-redis"><i class="dot"></i>Redis</span>
+        <span id="h-sqs"><i class="dot"></i>SQS</span>
+        <button class="iconbtn" id="theme" type="button" aria-label="Switch colour theme">Theme: auto</button>
+      </div>
+    </div>
+    <div class="pipe" id="pipe" aria-label="Live request path through the system">
+      <div class="node" data-n="api"><div class="wire"></div><div class="nm">FastAPI</div><div class="v" id="p-api">–</div><div class="sub" id="p-api-s">requests per second</div></div>
+      <div class="node" data-n="pg"><div class="wire"></div><div class="nm">PostgreSQL</div><div class="v" id="p-pg">–</div><div class="sub" id="p-pg-s">events stored</div></div>
+      <div class="node" data-n="outbox"><div class="wire"></div><div class="nm">Outbox relay</div><div class="v" id="p-ob">–</div><div class="sub" id="p-ob-s">rows waiting to publish</div></div>
+      <div class="node" data-n="sqs"><div class="wire"></div><div class="nm">AWS SQS</div><div class="v" id="p-sqs">–</div><div class="sub" id="p-sqs-s">messages in flight</div></div>
+      <div class="node" data-n="worker"><div class="wire"></div><div class="nm">Dispatch worker</div><div class="v" id="p-wk">–</div><div class="sub" id="p-wk-s">messages per second</div></div>
+      <div class="node" data-n="redis"><div class="wire"></div><div class="nm">Redis</div><div class="v" id="p-rd">–</div><div class="sub" id="p-rd-s">free couriers in the GEO index</div></div>
+      <div class="node" data-n="ws"><div class="wire"></div><div class="nm">WebSockets</div><div class="v" id="p-ws">–</div><div class="sub" id="p-ws-s">live connections</div></div>
+    </div>
+  </div>
+</div>
+
+<main class="wrap">
+
+<!-- ======================= CONTROL ROOM ======================= -->
+<section class="view" id="v-control" aria-labelledby="t-control">
+  <h1 class="sr" id="t-control">Control room</h1>
+  <div class="grid control">
+    <div class="sheet mapbox">
+      <div class="mapbar">
+        <h2>Live map</h2>
+        <div class="legend" aria-label="Map legend">
+          <span><i class="lg-dot" style="background:var(--s-wait)"></i>Waiting for a courier</span>
+          <span><i class="lg-line" style="background:var(--s-assigned)"></i>Courier heading to pickup</span>
+          <span><i class="lg-line" style="background:var(--s-onway)"></i>Food on the way</span>
+          <span><i class="lg-sq"></i>Restaurant</span>
+          <span><i class="lg-ring"></i>Free courier</span>
+        </div>
+      </div>
+      <div class="mapwrap"><canvas id="map" role="img" aria-label="Map of couriers and active orders"></canvas><div class="tip" id="maptip" hidden></div></div>
+    </div>
+    <div class="rail">
+      <div class="sheet figs">
+        <div class="fig"><div class="k">Orders in progress</div><div class="v num" id="k-active">–</div><div class="d" id="k-active-d">&nbsp;</div></div>
+        <div class="fig"><div class="k">Time to find a courier</div><div class="v num" id="k-match">–</div><div class="d" id="k-match-d">&nbsp;</div></div>
+        <div class="fig"><div class="k">Delivered</div><div class="v num" id="k-done">–</div><div class="d" id="k-done-d">&nbsp;</div></div>
+        <div class="fig"><div class="k">Couriers working</div><div class="v num" id="k-cour">–</div><div class="d" id="k-cour-d">&nbsp;</div></div>
+      </div>
+      <div class="sheet">
+        <header><h2>Where every order is</h2></header>
+        <div class="pad">
+          <div class="stack" id="dist-bar" role="img" aria-label="Orders by status"></div>
+          <div class="dist" id="dist"></div>
+        </div>
+      </div>
+      <div class="sheet">
+        <header><h2>Activity</h2><div class="grow"></div>
+          <div class="seg" role="group" aria-label="Filter activity">
+            <button type="button" data-f="all" aria-pressed="true">All</button>
+            <button type="button" data-f="hand">Handoffs</button>
+            <button type="button" data-f="prob">Problems</button>
+          </div>
+        </header>
+        <ul class="feed" id="feed" aria-live="polite"></ul>
+      </div>
+    </div>
+  </div>
+  <div class="grid lower" style="margin-top:20px">
+    <div class="sheet">
+      <header><h2>Orders placed and delivered</h2></header>
+      <p class="hint">Every 5 seconds over the last 5 minutes, counted in PostgreSQL.</p>
+      <div class="chart-legend"><span><i class="lg-line" style="background:var(--s-assigned)"></i>Placed</span><span><i class="lg-line" style="background:var(--s-done)"></i>Delivered</span></div>
+      <div class="chart" id="c-through"></div>
+    </div>
+    <div class="sheet">
+      <header><h2>Time to find a courier</h2></header>
+      <p class="hint">Assignments by how long they took, since the worker started.</p>
+      <div class="chart" id="c-assign"></div>
+    </div>
+    <div class="sheet">
+      <header><h2>Handled without anyone noticing</h2></header>
+      <ul class="absorbed" id="absorbed"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= MERCHANT ======================= -->
+<section class="view" id="v-merchant" hidden aria-labelledby="t-merchant">
+  <div class="lede">
+    <div>
+      <h1 id="t-merchant">Merchant console</h1>
+      <p>What a restaurant sees: its own orders only, streamed over a WebSocket filtered to that merchant.</p>
+    </div>
+  </div>
+  <div class="mpick" id="mpick" role="group" aria-label="Choose a merchant"></div>
+  <div class="sheet mstats" id="mstats"></div>
+  <div class="grid mlayout">
+    <div class="board" id="board"></div>
+    <div class="rail">
+      <div class="sheet idem">
+        <header><h2>Place a test order</h2></header>
+        <div class="pad" style="padding-top:8px">
+          <p class="muted" style="margin:0;font-size:13.5px">Every create carries an <code>Idempotency-Key</code>. Sending the same request again returns the original order rather than creating a second one.</p>
+          <div class="key"><label class="sr" for="ikey">Idempotency key</label><input id="ikey" readonly><button class="btn" type="button" id="inew">New key</button></div>
+          <div class="acts"><button class="btn primary" type="button" id="isend">Place order</button><button class="btn" type="button" id="iagain" disabled>Send the same request again</button></div>
+          <ul class="ledger" id="ledger"></ul>
+          <div id="verdict"></div>
+        </div>
+      </div>
+      <div class="sheet">
+        <header><h2>Live feed for this merchant</h2><div class="grow"></div><span class="conn" id="m-conn"><i class="dot"></i>…</span></header>
+        <p class="hint">WebSocket <code>role=merchant</code>. Only this merchant's events arrive here.</p>
+        <ul class="frames" id="m-frames" style="margin-top:10px"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= CUSTOMER ======================= -->
+<section class="view" id="v-customer" hidden aria-labelledby="t-customer">
+  <div class="lede">
+    <div>
+      <h1 id="t-customer">Customer tracking</h1>
+      <p>Follow one delivery the way the customer's phone does. The phone subscribes to its own events and catches up on anything it missed after a dropped connection.</p>
+    </div>
+  </div>
+  <div class="grid clayout">
+    <div class="sheet">
+      <header><h2>Pick a delivery to follow</h2></header>
+      <div class="pad" style="padding-bottom:6px"><button class="btn primary" type="button" id="c-new" style="width:100%">Order as a new customer</button></div>
+      <ul class="olist" id="c-list"></ul>
+    </div>
+    <div class="phone" aria-label="Customer phone">
+      <div class="screen">
+        <div class="notch"><i></i></div>
+        <div class="trk-head">
+          <div class="from" id="c-from">No order selected</div>
+          <h3 id="c-head">Pick a delivery</h3>
+          <p id="c-sub">Choose an order on the left, or place one.</p>
+        </div>
+        <canvas class="minimap" id="c-map" role="img" aria-label="Map of this delivery"></canvas>
+        <ol class="steps" id="c-steps"></ol>
+      </div>
+    </div>
+    <div class="sheet">
+      <header><h2>What the phone received</h2><div class="grow"></div><span class="conn" id="c-conn"><i class="dot"></i>Not connected</span></header>
+      <p class="hint">WebSocket <code>role=consumer</code>. On reconnect the phone sends <code>last_event_id</code>, the server replays what it missed, and the phone drops anything it has already seen.</p>
+      <div class="wsctl"><button class="btn" type="button" id="c-drop" disabled>Cut the connection for 8 seconds</button></div>
+      <div class="wsstats"><span>Events <b id="c-n">0</b></span><span>Replayed <b id="c-rp">0</b></span><span>Duplicates dropped <b id="c-dup">0</b></span><span>Reconnects <b id="c-rc">0</b></span></div>
+      <ul class="frames" id="c-frames"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= METRICS ======================= -->
+<section class="view" id="v-metrics" hidden aria-labelledby="t-metrics">
+  <div class="lede">
+    <div>
+      <h1 id="t-metrics">Metrics</h1>
+      <p>Read from the same Prometheus endpoints Grafana scrapes: this API instance's <code>/metrics</code> and the dispatch worker's. Rates are measured between samples taken every 3 seconds.</p>
+      <div class="links"><a href="/metrics" target="_blank" rel="noopener">Raw API metrics</a><a href="/docs" target="_blank" rel="noopener">API docs</a><a id="graf" href="http://localhost:3000" target="_blank" rel="noopener">Grafana (Docker setup)</a><a id="prom" href="http://localhost:9090" target="_blank" rel="noopener">Prometheus (Docker setup)</a></div>
+    </div>
+  </div>
+  <div class="sheet mfigs" id="mfigs"></div>
+  <div class="grid mcharts" style="margin-top:20px">
+    <div class="sheet"><header><h2>API requests per second</h2></header><p class="hint">This instance, all routes.</p><div class="chart" id="mc-req"></div></div>
+    <div class="sheet"><header><h2>Queue messages handled per second</h2></header><p class="hint">Dispatch worker, by message type.</p><div class="chart-legend" id="mc-msg-lg"></div><div class="chart" id="mc-msg"></div></div>
+    <div class="sheet"><header><h2>API latency, 95th percentile</h2></header><p class="hint">From the request-duration histogram, between samples.</p><div class="chart" id="mc-p95"></div></div>
+  </div>
+  <div class="grid ltgrid" style="margin-top:20px">
+    <div class="sheet"><header><h2>Routes</h2></header><p class="hint">Since this API process started.</p><div class="scroll-x pad" style="padding-top:8px"><table id="mt-routes"></table></div></div>
+    <div class="sheet"><header><h2>Worker</h2></header><p class="hint" id="mt-wk-note">Since the worker started.</p><div class="scroll-x pad" style="padding-top:8px"><table id="mt-worker"></table></div></div>
+  </div>
+</section>
+
+<!-- ======================= LOAD TEST ======================= -->
+<section class="view" id="v-loadtest" hidden aria-labelledby="t-loadtest">
+  <div class="lede" style="justify-content:space-between">
+    <div><h1 id="t-loadtest" class="sr">Load test</h1><p class="headline" id="lt-head">Loading the latest load test…</p></div>
+    <div class="seg" role="group" aria-label="Which run" id="lt-kind">
+      <button type="button" data-k="chaos" aria-pressed="true">With outages</button>
+      <button type="button" data-k="steady">Steady load</button>
+    </div>
+  </div>
+  <div id="lt-body">
+    <div class="sheet facts" id="lt-facts"></div>
+    <div class="grid ltgrid">
+      <div class="sheet">
+        <header><h2>The run, second by second</h2></header>
+        <p class="hint">Orders placed and delivered every 2 seconds, with failed client requests below. Shaded bands are injected outages.</p>
+        <div class="chart-legend"><span><i class="lg-line" style="background:var(--s-assigned)"></i>Placed</span><span><i class="lg-line" style="background:var(--s-done)"></i>Delivered</span><span><i class="lg-line" style="background:var(--bad)"></i>Failed requests (retried)</span></div>
+        <div class="chart" id="lt-time"></div>
+        <ul class="outages" id="lt-outages"></ul>
+      </div>
+      <div class="sheet">
+        <header><h2>Checked afterwards in the database</h2></header>
+        <ul class="checks" id="lt-checks"></ul>
+      </div>
+    </div>
+    <div class="grid ltgrid" style="margin-top:20px">
+      <div class="sheet"><header><h2>Client-side latency by endpoint</h2></header><p class="hint">Milliseconds, measured by the load generator including retries through outages.</p><div class="scroll-x pad" style="padding-top:8px"><table id="lt-lat"></table></div></div>
+      <div class="sheet"><header><h2>How the orders ended</h2></header><div class="pad" id="lt-out"></div></div>
+    </div>
+    <p class="note" id="lt-env"></p>
+  </div>
+</section>
+</main>
+
+<footer><div class="wrap"><span>DispatchFlow</span><a href="/docs">API docs</a><a href="/metrics">Prometheus metrics</a><a href="/health">Health</a></div></footer>
+
+<script>
+"use strict";
+/* ============================================================ utilities */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const nf = new Intl.NumberFormat("en-US");
+const fmt = n => n == null || Number.isNaN(n) ? "–" : nf.format(Math.round(n));
+const fmt1 = n => n == null || !isFinite(n) ? "–" : (Math.abs(n) >= 100 ? nf.format(Math.round(n)) : n.toFixed(1));
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const short = id => id ? String(id).replace(/^[a-z]+_/, "").slice(0, 6) : "";
+const clock = ts => { const d = ts ? new Date(ts) : new Date(); return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit", hour12:false}); };
+const secs = s => s == null || !isFinite(s) ? "–" : s < 1 ? `${Math.round(s * 1000)} ms` : s < 60 ? `${s.toFixed(1)} s` : `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`;
+const ms = v => v == null ? "–" : v < 1000 ? `${Math.round(v)} ms` : `${(v / 1000).toFixed(1)} s`;
+const ago = ts => { const s = (Date.now() - new Date(ts)) / 1000; return s < 60 ? `${Math.max(0, Math.round(s))}s` : `${Math.floor(s / 60)}m ${Math.round(s % 60)}s`; };
+const cssv = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const store = {get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch { return d; } },
+               set(k, v) { try { localStorage.setItem(k, v); } catch {} }};
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (r.status === 204) return null;
+  if (!r.ok) throw new Error(`${r.status} ${path}`);
+  return r.json();
+}
+function haversine(a, b) {
+  const R = 6371, toR = x => x * Math.PI / 180;
+  const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(toR(a.lat)) * Math.cos(toR(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const STATUS = {
+  CREATED:   {label: "Placed",            v: "--s-wait"},
+  ASSIGNING: {label: "Finding a courier", v: "--s-wait"},
+  ASSIGNED:  {label: "Courier on the way to pickup", v: "--s-assigned"},
+  PICKED_UP: {label: "Out for delivery",  v: "--s-onway"},
+  DELIVERED: {label: "Delivered",         v: "--s-done"},
+  CANCELLED: {label: "Cancelled",         v: "--s-cancel"},
+  FAILED:    {label: "No courier found",  v: "--s-failed"},
+};
+const TYPE_STATUS = {"order.created":"CREATED","order.assigning":"ASSIGNING","order.assigned":"ASSIGNED","order.reassigning":"ASSIGNING",
+  "order.assignment_retry":"ASSIGNING","order.picked_up":"PICKED_UP","order.delivered":"DELIVERED","order.cancelled":"CANCELLED","order.failed":"FAILED"};
+const ACTIVE = ["CREATED","ASSIGNING","ASSIGNED","PICKED_UP"];
+
+/* ============================================================ theme */
+(function theme() {
+  const btn = $("#theme"), order = ["auto", "light", "dark"];
+  let t = store.get("df-theme", "auto");
+  const apply = () => {
+    if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+    btn.textContent = `Theme: ${t}`; window.dispatchEvent(new Event("df-theme"));
+  };
+  btn.addEventListener("click", () => { t = order[(order.indexOf(t) + 1) % 3]; store.set("df-theme", t); apply(); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => window.dispatchEvent(new Event("df-theme")));
+  apply();
+})();
+
+/* ============================================================ live stream with replay */
+class Stream {
+  constructor(params, {onEvent, onState, onFrame} = {}) {
+    this.params = params; this.onEvent = onEvent || (() => {}); this.onState = onState || (() => {}); this.onFrame = onFrame || (() => {});
+    this.lastId = params.last_event_id ?? null; this.seen = new Set(); this.stopped = false; this.paused = false;
+    this.retry = 0; this.stats = {events: 0, replayed: 0, dups: 0, reconnects: 0}; this.opened = 0;
+    this.open();
+  }
+  url() {
+    const u = new URL("/ws", location.href); u.protocol = location.protocol === "https:" ? "wss:" : "ws:";
+    for (const [k, v] of Object.entries(this.params)) if (k !== "last_event_id" && v != null) u.searchParams.set(k, v);
+    if (this.lastId != null) u.searchParams.set("last_event_id", this.lastId);
+    return u;
+  }
+  open() {
+    if (this.stopped) return;
+    if (this.opened++) this.stats.reconnects++;
+    this.onState(this.opened > 1 ? "catching" : "connecting");
+    const ws = this.ws = new WebSocket(this.url());
+    ws.onmessage = m => {
+      let e; try { e = JSON.parse(m.data); } catch { return; }
+      if (e.type === "hello") { this.retry = 0; this.onState("live", e); return; }
+      if (e.type === "ping") return;
+      if (e.type === "lagged") { this.onState("lagged", e); return; }
+      if (e.id != null) {
+        if (this.seen.has(e.id)) { this.stats.dups++; this.onFrame(e, "dup"); return; }
+        this.seen.add(e.id); if (this.seen.size > 6000) this.seen = new Set([...this.seen].slice(-3000));
+        this.lastId = Math.max(this.lastId ?? 0, e.id); this.stats.events++;
+        if (e.replay) this.stats.replayed++;
+      }
+      this.onFrame(e, e.replay ? "replay" : "live");
+      this.onEvent(e);
+    };
+    ws.onclose = () => {
+      if (this.stopped || this.paused || ws !== this.ws) return;
+      this.onState("reconnecting");
+      const wait = Math.min(8000, 400 * 2 ** this.retry++) * (0.7 + Math.random() * 0.6);
+      setTimeout(() => this.open(), wait);
+    };
+  }
+  drop(ms) {
+    if (this.paused) return;
+    this.paused = true; try { this.ws.close(); } catch {}
+    this.onState("offline");
+    setTimeout(() => { this.paused = false; this.open(); }, ms);
+  }
+  stop() { this.stopped = true; try { this.ws.close(); } catch {} }
+}
+function connBadge(el, state) {
+  const map = {connecting: ["", "Connecting"], live: ["ok beat", "Live"], catching: ["warn", "Catching up"], reconnecting: ["warn", "Reconnecting"],
+               offline: ["bad", "Offline"], lagged: ["warn", "Fell behind, resyncing"]};
+  const [cls, txt] = map[state] || ["", state];
+  el.innerHTML = `<i class="dot ${cls}"></i>${txt}`;
+}
+
+/* ============================================================ charts (SVG, with hover) */
+function quantileFromBuckets(b, q) {   // b: [[le, cumulativeCount]] sorted
+  const total = b.length ? b[b.length - 1][1] : 0;
+  if (!total) return null;
+  const rank = q * total; let prevLe = 0, prevC = 0;
+  for (const [le, c] of b) {
+    if (c >= rank) {
+      if (!isFinite(le)) return prevLe;
+      const span = c - prevC; return prevLe + (le - prevLe) * (span ? (rank - prevC) / span : 0);
+    }
+    prevLe = le; prevC = c;
+  }
+  return prevLe;
+}
+function niceMax(v) { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)); for (const m of [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10]) if (m * p >= v) return m * p; return 10 * p; }
+
+function lineChart(host, {x, series, height = 200, yFmt = fmt, xFmt = v => v, bands = [], lower = null}) {
+  const W = Math.max(280, host.clientWidth - 28), H = height, L = 40, R = 8, T = 10, B = 24;
+  const lowerH = lower ? 46 : 0, plotH = H - T - B - lowerH;
+  const max = niceMax(Math.max(1, ...series.flatMap(s => s.values.filter(v => v != null))));
+  const n = x.length, xs = i => L + (n <= 1 ? 0 : i * (W - L - R) / (n - 1)), ys = v => T + plotH - v / max * plotH;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(series.map(s => s.name).join(" and "))} over time">`;
+  for (const b of bands) {
+    const x0 = xs(b.i0), x1 = xs(Math.min(n - 1, b.i1));
+    svg += `<rect x="${x0}" y="${T}" width="${Math.max(3, x1 - x0)}" height="${plotH + lowerH}" fill="var(--bad)" opacity=".09"/>`;
+    if (b.label) svg += `<text x="${x0 + 4}" y="${T + 12}" font-size="11" fill="var(--ink-3)">${esc(b.label)}</text>`;
+  }
+  for (let k = 0; k <= 3; k++) {
+    const v = max * k / 3, y = ys(v);
+    svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--line-2)"/><text x="${L - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${yFmt(v)}</text>`;
+  }
+  const ticks = Math.min(6, n);
+  for (let k = 0; k < ticks; k++) {
+    const i = Math.round(k * (n - 1) / Math.max(1, ticks - 1));
+    svg += `<text x="${xs(i)}" y="${H - 6}" text-anchor="${k === 0 ? "start" : k === ticks - 1 ? "end" : "middle"}" font-size="11" fill="var(--ink-3)">${esc(xFmt(x[i]))}</text>`;
+  }
+  for (const s of series) {
+    let d = "", pen = false;
+    s.values.forEach((v, i) => { if (v == null) { pen = false; return; } d += `${pen ? "L" : "M"}${xs(i).toFixed(1)},${ys(v).toFixed(1)}`; pen = true; });
+    svg += `<path d="${d}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+  }
+  if (lower) {
+    const lmax = niceMax(Math.max(1, ...lower.values)), base = T + plotH + lowerH - 2, bw = Math.max(1, (W - L - R) / Math.max(1, n) - 1);
+    lower.values.forEach((v, i) => { if (v > 0) { const h = Math.max(2, v / lmax * (lowerH - 10)); svg += `<rect x="${xs(i) - bw / 2}" y="${base - h}" width="${bw}" height="${h}" rx="1" fill="${lower.color}" opacity=".85"/>`; } });
+    svg += `<line x1="${L}" x2="${W - R}" y1="${base}" y2="${base}" stroke="var(--line)"/>`;
+  }
+  svg += `<line class="xh" x1="0" x2="0" y1="${T}" y2="${T + plotH + lowerH}" stroke="var(--ink-3)" stroke-dasharray="3 3" visibility="hidden"/>`;
+  svg += series.map((s, k) => `<circle class="hd" data-k="${k}" r="4" fill="${s.color}" stroke="var(--sheet)" stroke-width="2" visibility="hidden"/>`).join("");
+  svg += `<rect x="${L}" y="${T}" width="${W - L - R}" height="${plotH + lowerH}" fill="transparent"/></svg><div class="ctip" hidden></div>`;
+  host.innerHTML = svg;
+  const el = host.querySelector("svg"), tip = host.querySelector(".ctip"), xh = el.querySelector(".xh");
+  el.addEventListener("pointermove", ev => {
+    const r = el.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const i = Math.max(0, Math.min(n - 1, Math.round((px - L) / ((W - L - R) / Math.max(1, n - 1)))));
+    xh.setAttribute("x1", xs(i)); xh.setAttribute("x2", xs(i)); xh.setAttribute("visibility", "visible");
+    el.querySelectorAll(".hd").forEach(c => { const s = series[+c.dataset.k], v = s.values[i]; if (v == null) { c.setAttribute("visibility", "hidden"); return; }
+      c.setAttribute("cx", xs(i)); c.setAttribute("cy", ys(v)); c.setAttribute("visibility", "visible"); });
+    tip.hidden = false;
+    tip.innerHTML = `<div style="opacity:.75;margin-bottom:3px">${esc(xFmt(x[i]))}</div>` + series.map(s => `<div><span class="sw" style="background:${s.color}"></span>${esc(s.name)} <b>${yFmt(s.values[i])}</b></div>`).join("")
+      + (lower ? `<div><span class="sw" style="background:${lower.color}"></span>${esc(lower.name)} <b>${fmt(lower.values[i])}</b></div>` : "");
+    const left = xs(i) / W * r.width + 14; tip.style.left = `${Math.min(left, r.width - tip.offsetWidth)}px`; tip.style.top = "6px";
+  });
+  el.addEventListener("pointerleave", () => { tip.hidden = true; xh.setAttribute("visibility", "hidden"); el.querySelectorAll(".hd").forEach(c => c.setAttribute("visibility", "hidden")); });
+}
+
+function barChart(host, {bars, color, height = 200, yFmt = fmt, caption = ""}) {
+  const W = Math.max(240, host.clientWidth - 28), H = height, L = 34, R = 4, T = 10, B = 38;
+  const max = niceMax(Math.max(1, ...bars.map(b => b.value))), n = bars.length, slot = (W - L - R) / Math.max(1, n), bw = Math.max(4, slot - 4);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" height="${H}" role="img" aria-label="${esc(caption)}">`;
+  for (let k = 0; k <= 3; k++) { const v = max * k / 3, y = T + (H - T - B) * (1 - k / 3);
+    svg += `<line x1="${L}" x2="${W - R}" y1="${y}" y2="${y}" stroke="var(--line-2)"/><text x="${L - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--ink-3)">${yFmt(v)}</text>`; }
+  bars.forEach((b, i) => {
+    const h = b.value / max * (H - T - B), x = L + i * slot + 2, y = T + (H - T - B) - h;
+    if (h > 0) svg += `<path d="M${x},${y + h}V${y + Math.min(4, h)}a${Math.min(4, h)},${Math.min(4, h)} 0 0 1 ${Math.min(4, h)},-${Math.min(4, h)}H${x + bw - Math.min(4, h)}a${Math.min(4, h)},${Math.min(4, h)} 0 0 1 ${Math.min(4, h)},${Math.min(4, h)}V${y + h}Z" fill="${color}"/>`;
+    svg += `<rect class="hit" data-i="${i}" x="${L + i * slot}" y="${T}" width="${slot}" height="${H - T - B}" fill="transparent"/>`;
+    if (n <= 8 || i % 2 === 0) svg += `<text x="${x + bw / 2}" y="${H - B + 15}" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">${esc(b.label)}</text>`;
+  });
+  svg += `</svg><div class="ctip" hidden></div>`;
+  host.innerHTML = svg;
+  const el = host.querySelector("svg"), tip = host.querySelector(".ctip");
+  el.querySelectorAll(".hit").forEach(r => {
+    r.addEventListener("pointerenter", () => { const b = bars[+r.dataset.i]; tip.hidden = false; tip.innerHTML = `${esc(b.tip || b.label)}<br><b>${fmt(b.value)}</b> ${esc(b.unit || "")}`;
+      const box = el.getBoundingClientRect(); tip.style.left = `${Math.min((+r.getAttribute("x")) / W * box.width, box.width - 150)}px`; tip.style.top = "4px"; });
+    r.addEventListener("pointerleave", () => { tip.hidden = true; });
+  });
+}
+
+/* ============================================================ the city map */
+const BOUNDS = {lat0: 37.712, lat1: 37.808, lng0: -122.492, lng1: -122.372};
+const KX = Math.cos(37.76 * Math.PI / 180);
+function projector(w, h, pad = 14, b = BOUNDS) {
+  const sw = (b.lng1 - b.lng0) * KX, sh = (b.lat1 - b.lat0);
+  const s = Math.min((w - 2 * pad) / sw, (h - 2 * pad) / sh), ox = (w - sw * s) / 2, oy = (h - sh * s) / 2;
+  return {s, b, f: (lat, lng) => [ox + (lng - b.lng0) * KX * s, oy + (b.lat1 - lat) * s], ox, oy, sw: sw * s, sh: sh * s};
+}
+const LAND = [ // a stylised outline of San Francisco, clockwise from the south-west
+  [37.690,-122.503],[37.735,-122.5065],[37.760,-122.5105],[37.780,-122.5115],[37.788,-122.507],[37.7905,-122.4905],[37.7905,-122.4835],
+  [37.8075,-122.4775],[37.8062,-122.462],[37.8058,-122.447],[37.8085,-122.4305],[37.8082,-122.418],[37.806,-122.405],[37.799,-122.398],
+  [37.792,-122.392],[37.785,-122.388],[37.776,-122.387],[37.766,-122.386],[37.757,-122.384],[37.748,-122.384],[37.739,-122.379],
+  [37.730,-122.372],[37.7205,-122.3655],[37.712,-122.377],[37.703,-122.389],[37.690,-122.392]];
+const PARKS = [
+  {poly: [[37.7735,-122.511],[37.7735,-122.4535],[37.7712,-122.4535],[37.7712,-122.447],[37.7728,-122.447],[37.7728,-122.4535],[37.7645,-122.4535],[37.7645,-122.511]], name: "Golden Gate Park"},
+  {circle: [37.7525, -122.4475, 0.0055], name: "Twin Peaks"},
+  {circle: [37.7175, -122.4205, 0.006]},
+  {poly: [[37.8075,-122.477],[37.808,-122.448],[37.8035,-122.448],[37.8015,-122.465],[37.8045,-122.477]], name: "Presidio"},
+];
+const LABELS = [["Richmond",37.7795,-122.473],["Sunset",37.7555,-122.481],["Haight",37.7695,-122.441],["Mission",37.7565,-122.416],
+  ["SoMa",37.7795,-122.402],["Financial District",37.7935,-122.4035],["Bayview",37.7305,-122.392],["Bernal Heights",37.7395,-122.4155],
+  ["Excelsior",37.7245,-122.432],["Pacific Heights",37.7925,-122.4365],["Mission Bay",37.7705,-122.392]];
+const MAJORS = [ // [lat,lng] polylines
+  [[37.7945,-122.395],[37.7745,-122.4205],[37.7625,-122.4355],[37.7545,-122.4445]],      // Market St
+  [[37.7815,-122.492],[37.7845,-122.42],[37.7865,-122.404]],                               // Geary
+  [[37.808,-122.4755],[37.712,-122.4755]],                                                // 19th Ave
+  [[37.7485,-122.47],[37.7485,-122.388]],                                                 // Cesar Chavez
+  [[37.7905,-122.399],[37.7615,-122.42],[37.712,-122.444]],                               // Mission St
+  [[37.808,-122.4245],[37.712,-122.4045]],                                                 // Van Ness / S Van Ness / 101
+];
+function drawBase(ctx, P, w, h, opts = {}) {
+  const c = k => cssv(k), b = P.b;
+  const inv = (x, y) => [b.lat1 - (y - P.oy) / P.s, b.lng0 + (x - P.ox) / (KX * P.s)];
+  const [vlat1, vlng0] = inv(0, 0), [vlat0, vlng1] = inv(w, h);
+  const path = pts => { ctx.beginPath(); pts.forEach(([la, ln], i) => { const [x, y] = P.f(la, ln); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.closePath(); };
+  ctx.fillStyle = c("--water"); ctx.fillRect(0, 0, w, h);
+  ctx.save(); path(LAND); ctx.fillStyle = c("--land"); ctx.fill(); ctx.clip();
+  // a regular street grid across whatever part of the city is on screen
+  ctx.strokeStyle = c("--street"); ctx.lineWidth = 1; ctx.beginPath();
+  const stepLat = opts.dense ? 0.0026 : 0.0034, stepLng = opts.dense ? 0.0034 : 0.0044;
+  for (let la = Math.floor(vlat0 / stepLat) * stepLat; la <= vlat1; la += stepLat) { const [x0, y] = P.f(la, vlng0), [x1] = P.f(la, vlng1); ctx.moveTo(x0, y); ctx.lineTo(x1, y); }
+  for (let ln = Math.floor(vlng0 / stepLng) * stepLng; ln <= vlng1; ln += stepLng) { const [x, y0] = P.f(vlat1, ln), [, y1] = P.f(vlat0, ln); ctx.moveTo(x, y0); ctx.lineTo(x, y1); }
+  ctx.stroke();
+  ctx.fillStyle = c("--park");
+  for (const p of PARKS) {
+    if (p.poly) path(p.poly); else { const [x, y] = P.f(p.circle[0], p.circle[1]); ctx.beginPath(); ctx.arc(x, y, p.circle[2] * P.s, 0, 7); }
+    ctx.fill();
+  }
+  ctx.strokeStyle = c("--street-major"); ctx.lineWidth = opts.dense ? 3 : 3.5; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  for (const line of MAJORS) { ctx.beginPath(); line.forEach(([la, ln], i) => { const [x, y] = P.f(la, ln); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }); ctx.stroke(); }
+  ctx.restore();
+  if (!opts.noLabels) {
+    ctx.fillStyle = c("--map-label"); ctx.font = `500 ${opts.dense ? 10.5 : 11.5}px "Archivo DF", system-ui, sans-serif`; ctx.textAlign = "center";
+    for (const [t, la, ln] of LABELS) { const [x, y] = P.f(la, ln); if (x > 30 && x < w - 30 && y > 12 && y < h - 6) ctx.fillText(t, x, y); }
+    ctx.font = `italic 500 12px "Archivo DF", system-ui, sans-serif`;
+    for (const [t, la, ln] of [["San Francisco Bay", 37.776, -122.372], ["Pacific Ocean", 37.748, -122.522]]) { const [x, y] = P.f(la, ln); if (x > 50 && x < w - 50 && y > 12 && y < h - 6) ctx.fillText(t, x, y); }
+  }
+}
+
+/* ============================================================ header: health + live pipeline */
+const Live = {summary: null, metrics: null, prevMetrics: null, wsEventsPerSec: 0};
+function sumSamples(list, name, filter = () => true) { return (list || []).filter(s => s.name === name && filter(s.labels)).reduce((a, s) => a + s.value, 0); }
+function setText(id, v) { const el = document.getElementById(id); if (el && el.textContent !== String(v)) el.textContent = v; }
+async function pollSummary() {
+  try {
+    const s = Live.summary = await api("/api/stats/summary");
+    const qm = s.queue?.main || {};
+    setText("p-pg", fmt(s.events_total)); setText("p-ob", fmt(s.outbox_backlog));
+    setText("p-sqs", fmt((qm.in_flight || 0) + (qm.visible || 0) + (qm.delayed || 0)));
+    setText("p-sqs-s", `in flight, ${fmt(s.queue?.dlq?.visible || 0)} in dead-letter queue`);
+    setText("p-ws", fmt(s.ws_connections));
+    setText("p-rd", s.geo_couriers == null ? "down" : fmt(s.geo_couriers));
+    const red = $("#h-redis"); red.innerHTML = `<i class="dot ${s.redis_healthy ? "ok" : "bad"}"></i>${s.redis_healthy ? "Redis" : "Redis down, using PostgreSQL"}`;
+    $('[data-n="redis"]').classList.toggle("down", !s.redis_healthy);
+    const sqsOk = s.queue && s.queue.ts && (Date.now() / 1000 - s.queue.ts) < 30;
+    $("#h-sqs").innerHTML = `<i class="dot ${sqsOk ? "ok" : "warn"}"></i>SQS`;
+    window.dispatchEvent(new CustomEvent("df-summary", {detail: s}));
+  } catch { $("#h-live").innerHTML = `<i class="dot bad"></i>API unreachable`; }
+}
+async function pollMetrics() {
+  try {
+    const m = await api("/api/metrics/overview");
+    Live.prevMetrics = Live.metrics; Live.metrics = m;
+    const a = Live.prevMetrics, dt = a ? m.ts - a.ts : 0;
+    if (a && dt > 0) {
+      const rq = (sumSamples(m.api, "dispatchflow_http_requests_total") - sumSamples(a.api, "dispatchflow_http_requests_total")) / dt;
+      setText("p-api", fmt1(Math.max(0, rq)));
+      if (m.worker && a.worker) {
+        const wk = (sumSamples(m.worker, "dispatchflow_sqs_messages_total") - sumSamples(a.worker, "dispatchflow_sqs_messages_total")) / dt;
+        setText("p-wk", fmt1(Math.max(0, wk)));
+      }
+    }
+    if (!m.worker) { setText("p-wk", "–"); setText("p-wk-s", "worker metrics not reachable"); }
+    else setText("p-wk-s", "messages per second");
+    const hit = sumSamples(m.api, "dispatchflow_cache_requests_total", l => l.result === "hit"), all = sumSamples(m.api, "dispatchflow_cache_requests_total");
+    setText("p-rd-s", all ? `free couriers, ${Math.round(hit / all * 100)}% cache hits` : "free couriers in the GEO index");
+    window.dispatchEvent(new CustomEvent("df-metrics", {detail: m}));
+  } catch {}
+}
+// Pulses: one dot runs down the pipeline for each business event (rate-limited).
+let lastPulse = 0;
+function pulse(type) {
+  if (reduceMotion || document.hidden) return;
+  const now = performance.now(); if (now - lastPulse < 160) return; lastPulse = now;
+  const st = TYPE_STATUS[type]; const color = st ? cssv(STATUS[st].v) : cssv("--band-ink-2");
+  $$("#pipe .wire").forEach((w, i) => {
+    const d = document.createElement("span"); d.className = "pulse"; d.style.background = color; w.appendChild(d);
+    const len = w.clientWidth;
+    d.animate([{transform: "translateX(0)", opacity: 0}, {opacity: 1, offset: .15}, {transform: `translateX(${len}px)`, opacity: .9}],
+      {duration: 520, delay: i * 140, easing: "cubic-bezier(.4,0,.2,1)", fill: "backwards"}).onfinish = () => d.remove();
+  });
+}
+// The header's own ops stream also drives the control room.
+const Ops = {listeners: new Set(), stream: null};
+Ops.stream = new Stream({role: "ops"}, {
+  onState: st => connBadge($("#h-live"), st),
+  onEvent: e => { if (e.id != null) pulse(e.type); Ops.listeners.forEach(f => f(e)); },
+});
+
+/* ============================================================ CONTROL ROOM */
+const Control = (() => {
+  const canvas = $("#map"), tip = $("#maptip");
+  const orders = new Map(), couriers = new Map(), ripples = [];
+  let ctx, P, base, W = 0, H = 0, dpr = 1, active = false, raf = 0, feedFilter = "all";
+  const feedItems = [];
+
+  function resize() {
+    const r = canvas.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
+    W = r.width; H = r.height; if (!W || !H) return;
+    canvas.width = W * dpr; canvas.height = H * dpr; ctx = canvas.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    P = projector(W, H, 10);
+    base = document.createElement("canvas"); base.width = W * dpr; base.height = H * dpr;
+    const b = base.getContext("2d"); b.setTransform(dpr, 0, 0, dpr, 0, 0); drawBase(b, P, W, H);
+  }
+  function courierAt(c, lat, lng, ts) {
+    if (c.lat == null) { c.lat = c.dlat = lat; c.lng = c.dlng = lng; }
+    c.lat = lat; c.lng = lng; c.seen = ts ? new Date(ts).getTime() : Date.now();
+  }
+  function upsertCourier(id, patch) {
+    let c = couriers.get(id); if (!c) { c = {id, name: id, status: "AVAILABLE", lat: null, lng: null, seen: Date.now()}; couriers.set(id, c); }
+    Object.assign(c, Object.fromEntries(Object.entries(patch).filter(([k, v]) => v !== undefined && k !== "lat" && k !== "lng")));
+    if (patch.lat != null) courierAt(c, patch.lat, patch.lng, patch.ts);
+    return c;
+  }
+  function ripple(pt, color) { if (!pt || !P) return; ripples.push({pt, color, t0: performance.now()}); }
+
+  function onEvent(e) {
+    const t = e.type, p = e.payload || {};
+    if (t === "courier.location") { upsertCourier(e.courier_id, {lat: p.lat, lng: p.lng, status: p.status, ts: e.ts}); return; }
+    if (t === "courier.status") {
+      if (p.status === "OFFLINE") { couriers.delete(e.courier_id); return; }
+      upsertCourier(e.courier_id, {status: p.status, lat: p.lat, lng: p.lng, name: p.name, ts: e.ts}); return;
+    }
+    const st = TYPE_STATUS[t]; if (!st) return;
+    let o = orders.get(e.order_id);
+    if (!o && t === "order.created") { o = {...p}; orders.set(e.order_id, o); }
+    if (!o && p.pickup) { o = {id: e.order_id, merchant_id: e.merchant_id, consumer_id: e.consumer_id, pickup: p.pickup, dropoff: p.dropoff}; orders.set(e.order_id, o); }
+    if (o) {
+      o.status = st;
+      if (t === "order.assigned") { o.courier_id = p.courier_id; const c = upsertCourier(p.courier_id, {status: "BUSY", name: p.courier_name}); c.order = o.id; }
+      if (t === "order.reassigning") o.courier_id = null;
+      if (t === "order.created") ripple(o.pickup, cssv("--s-wait"));
+      if (t === "order.delivered") { ripple(o.dropoff, cssv("--s-done")); o.doneAt = performance.now(); }
+      if (t === "order.failed" || t === "order.cancelled") { ripple(o.pickup, cssv(t === "order.failed" ? "--s-failed" : "--s-cancel")); o.doneAt = performance.now(); }
+    }
+    addFeed(e, o);
+  }
+  function courierName(id) { return couriers.get(id)?.name || (id ? `courier ${short(id)}` : "a courier"); }
+  function describe(e, o) {
+    const p = e.payload || {}, oid = `order ${short(e.order_id)}`;
+    switch (e.type) {
+      case "order.created": return [`New ${oid} at ${esc(e.merchant_id)}`, "", "new"];
+      case "order.assigning": return null;
+      case "order.assigned": return [`${esc(p.courier_name || courierName(p.courier_id))} is heading to ${esc(e.merchant_id)} for ${oid}`, `matched in ${ms(p.assignment_latency_ms)}`, "hand"];
+      case "order.picked_up": return [`${esc(courierName(e.courier_id))} picked up ${oid}`, p.inferred ? "inferred from a late update" : "", "hand"];
+      case "order.delivered": return [`${oid} delivered`, o?.created_at ? `${secs((Date.now() - new Date(o.created_at)) / 1000)} after it was placed` : "", "hand"];
+      case "order.assignment_retry": return [`No courier free for ${oid}, trying again`, `attempt ${p.attempt}`, "prob"];
+      case "order.reassigning": return [`${esc(courierName(p.rejected_by))} handed back ${oid}`, "finding someone else", "prob"];
+      case "order.failed": return [`${oid} could not be matched`, `after ${p.attempts} attempts, the customer is told`, "prob"];
+      case "order.cancelled": return [`${oid} was cancelled`, esc((p.reason || "").replaceAll("_", " ")), "prob"];
+    }
+    return null;
+  }
+  function addFeed(e, o) {
+    const d = describe(e, o); if (!d) return;
+    feedItems.unshift({e, d}); if (feedItems.length > 80) feedItems.pop();
+    if (active && (feedFilter === "all" || feedFilter === d[2])) {
+      const ul = $("#feed"); ul.prepend(feedLi(e, d, true)); while (ul.children.length > 60) ul.lastChild.remove();
+    }
+  }
+  function feedLi(e, [what, more], fresh) {
+    const li = document.createElement("li"); if (fresh && !reduceMotion) li.className = "new";
+    const st = TYPE_STATUS[e.type];
+    li.innerHTML = `<time>${clock(e.ts)}</time><div class="what"><span class="bar" style="background:var(${STATUS[st].v})"></span>${what}${more ? ` <em>${more}</em>` : ""}</div>`;
+    return li;
+  }
+  function renderFeed() {
+    const ul = $("#feed"); ul.innerHTML = "";
+    feedItems.filter(x => feedFilter === "all" || x.d[2] === feedFilter).slice(0, 60).forEach(x => ul.appendChild(feedLi(x.e, x.d, false)));
+    if (!ul.children.length) ul.innerHTML = `<li class="empty" style="display:block">Nothing yet. Events appear here the moment they happen.</li>`;
+  }
+
+  function frame(now) {
+    raf = requestAnimationFrame(frame);
+    if (!ctx || !P) return;
+    ctx.drawImage(base, 0, 0, W, H);
+    const col = {wait: cssv("--s-wait"), as: cssv("--s-assigned"), on: cssv("--s-onway"), ink: cssv("--ink"), ink3: cssv("--ink-3"), sheet: cssv("--sheet")};
+    // glide couriers toward their last reported position
+    for (const c of couriers.values()) { if (c.lat == null) continue; const k = reduceMotion ? 1 : 0.08; c.dlat += (c.lat - c.dlat) * k; c.dlng += (c.lng - c.dlng) * k; }
+    // order routes
+    ctx.lineCap = "round";
+    for (const [id, o] of orders) {
+      if (!o.pickup) continue;
+      if (o.doneAt && now - o.doneAt > 1400) { orders.delete(id); continue; }
+      if (o.doneAt) continue;
+      const [px, py] = P.f(o.pickup.lat, o.pickup.lng), [dx, dy] = P.f(o.dropoff.lat, o.dropoff.lng);
+      const c = o.courier_id && couriers.get(o.courier_id);
+      if (o.status === "ASSIGNED" && c && c.lat != null) {
+        const [cx, cy] = P.f(c.dlat, c.dlng);
+        ctx.strokeStyle = col.as; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(px, py); ctx.stroke(); ctx.setLineDash([]);
+      } else if (o.status === "PICKED_UP") {
+        const [cx, cy] = c && c.lat != null ? P.f(c.dlat, c.dlng) : [px, py];
+        ctx.strokeStyle = col.on; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(dx, dy); ctx.stroke();
+        ctx.fillStyle = col.sheet; ctx.strokeStyle = col.on; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(dx, dy, 4, 0, 7); ctx.fill(); ctx.stroke();
+        continue;  // the food has left the restaurant: no pickup marker
+      } else if (o.status === "CREATED" || o.status === "ASSIGNING") {
+        const r = 5 + (reduceMotion ? 0 : Math.sin(now / 260 + px) * 1.6);
+        ctx.fillStyle = col.wait; ctx.globalAlpha = .22; ctx.beginPath(); ctx.arc(px, py, r + 5, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.arc(px, py, 4.5, 0, 7); ctx.fill();
+        continue;
+      }
+      ctx.fillStyle = col.ink; ctx.fillRect(px - 3.5, py - 3.5, 7, 7);
+    }
+    // couriers
+    const staleCut = Date.now() - 90000;
+    for (const c of couriers.values()) {
+      if (c.lat == null) continue;
+      const [x, y] = P.f(c.dlat, c.dlng), busy = c.status === "BUSY", stale = c.seen < staleCut;
+      const job = busy && c.order ? orders.get(c.order) : null;
+      ctx.globalAlpha = stale ? .35 : 1;
+      if (busy) { ctx.fillStyle = job?.status === "PICKED_UP" ? col.on : col.as; ctx.strokeStyle = col.sheet; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(x, y, 5.5, 0, 7); ctx.fill(); ctx.stroke(); }
+      else { ctx.strokeStyle = col.ink3; ctx.lineWidth = 2; ctx.fillStyle = col.sheet; ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 7); ctx.fill(); ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+    // ripples: created at the restaurant, delivered at the door
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i], t = (now - r.t0) / 1100; if (t >= 1) { ripples.splice(i, 1); continue; }
+      const [x, y] = P.f(r.pt.lat, r.pt.lng);
+      ctx.strokeStyle = r.color; ctx.globalAlpha = 1 - t; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, 6 + t * 26, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+  }
+  canvas.addEventListener("pointermove", ev => {
+    if (!P) return; const r = canvas.getBoundingClientRect(), mx = ev.clientX - r.left, my = ev.clientY - r.top;
+    let best = null, bd = 14;
+    for (const c of couriers.values()) { if (c.lat == null) continue; const [x, y] = P.f(c.dlat, c.dlng), d = Math.hypot(x - mx, y - my); if (d < bd) { bd = d; best = {kind: "c", c, x, y}; } }
+    for (const o of orders.values()) { if (!o.pickup || o.doneAt) continue; const [x, y] = P.f(o.pickup.lat, o.pickup.lng), d = Math.hypot(x - mx, y - my); if (d < bd) { bd = d; best = {kind: "o", o, x, y}; } }
+    if (!best) { tip.hidden = true; return; }
+    tip.hidden = false; tip.style.left = `${best.x}px`; tip.style.top = `${best.y}px`;
+    if (best.kind === "c") { const c = best.c, o = c.order && orders.get(c.order);
+      tip.innerHTML = `<b>${esc(c.name)}</b><br>${c.status === "BUSY" && o ? `${o.status === "PICKED_UP" ? "Delivering" : "Heading to pickup for"} order ${short(o.id)}` : c.status === "BUSY" ? "On a delivery" : "Free, waiting for a job"}`; }
+    else { const o = best.o; tip.innerHTML = `<b>Order ${short(o.id)}</b> at ${esc(o.merchant_id)}<br>${STATUS[o.status]?.label || o.status}${o.courier_id ? `, ${esc(courierName(o.courier_id))}` : ""}`; }
+  });
+  canvas.addEventListener("pointerleave", () => { tip.hidden = true; });
+  $$("#v-control .seg button").forEach(b => b.addEventListener("click", () => {
+    feedFilter = b.dataset.f; $$("#v-control .seg button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); renderFeed();
+  }));
+
+  function onSummary({detail: s}) {
+    if (!active) return;
+    const bs = s.orders.by_status || {}, waiting = (bs.CREATED || 0) + (bs.ASSIGNING || 0);
+    setText("k-active", fmt(s.orders.active)); setText("k-active-d", `${fmt(waiting)} waiting for a courier`);
+    const L = s.assignment_latency_s;
+    $("#k-match").innerHTML = L.count ? (L.p50 < 1 ? `${Math.round(L.p50 * 1000)}<small>ms</small>` : `${L.p50.toFixed(1)}<small>s</small>`) : "–";
+    setText("k-match-d", L.count ? `median; 95% within ${secs(L.p95)}` : "no assignments yet");
+    setText("k-done", fmt(bs.DELIVERED || 0)); setText("k-done-d", `${fmt(s.throughput_per_min.delivered)} in the last minute`);
+    const cb = s.couriers.by_status || {};
+    $("#k-cour").innerHTML = `${fmt(cb.BUSY || 0)}<small>of ${fmt((cb.BUSY || 0) + (cb.AVAILABLE || 0))}</small>`;
+    setText("k-cour-d", `${fmt(cb.AVAILABLE || 0)} free, ${fmt(cb.OFFLINE || 0)} off shift`);
+    const keys = [["CREATED", bs.CREATED], ["ASSIGNING", bs.ASSIGNING], ["ASSIGNED", bs.ASSIGNED], ["PICKED_UP", bs.PICKED_UP], ["DELIVERED", bs.DELIVERED], ["CANCELLED", bs.CANCELLED], ["FAILED", bs.FAILED]];
+    const tot = keys.reduce((a, [, v]) => a + (v || 0), 0) || 1;
+    $("#dist-bar").innerHTML = keys.filter(([, v]) => v).map(([k, v]) => `<span title="${STATUS[k].label}: ${fmt(v)}" style="flex-grow:${v / tot};background:var(${STATUS[k].v})"></span>`).join("");
+    $("#dist").innerHTML = keys.map(([k, v]) => `<span class="chip st-${k}" style="background:none;border:0;padding-left:0"><i></i>${STATUS[k].label}</span><span class="n">${fmt(v || 0)}</span>`).join("");
+    const R = s.reliability || {};
+    const items = [["Duplicate requests ignored", "Retries and double taps that would have created a second order or action", R.duplicates_absorbed],
+      ["Late updates ignored", "A pickup arriving after the delivery, or an old GPS ping", R.stale_ignored],
+      ["Courier searches retried", "No one was free, so the worker backed off and tried again", R.assignment_retries],
+      ["Jobs handed to another courier", "A courier turned the job down", R.reassignments],
+      ["Assignments reclaimed", "A courier never picked up in time", R.assignment_timeouts],
+      ["Stuck orders re-queued", "The reconciler's safety net", R.orders_redriven],
+      ["Messages set aside", "Malformed or repeatedly failing messages sent to the dead-letter queue", R.dead_lettered]];
+    $("#absorbed").innerHTML = items.map(([a, b, n]) => `<li><b>${a}</b><span>${b}</span><span class="n num">${fmt(n || 0)}</span></li>`).join("");
+  }
+  async function loadThroughput() {
+    if (!active) return;
+    try {
+      const rows = await api("/api/stats/throughput?minutes=5&bucket_s=5");
+      lineChart($("#c-through"), {x: rows.map(r => r.t), xFmt: t => clock(t).slice(0, 5), height: 280,
+        series: [{name: "Placed", color: cssv("--s-assigned"), values: rows.map(r => r.created)}, {name: "Delivered", color: cssv("--s-done"), values: rows.map(r => r.delivered)}]});
+    } catch {}
+  }
+  function onMetrics({detail: m}) {
+    if (!active || !m.worker) { if (active && !m.worker) $("#c-assign").innerHTML = `<p class="empty">The worker's metrics endpoint isn't reachable from the API.</p>`; return; }
+    const b = m.worker.filter(s => s.name === "dispatchflow_assignment_latency_seconds_bucket").map(s => [parseFloat(s.labels.le), s.value]).sort((a, b) => a[0] - b[0]);
+    if (!b.length) { $("#c-assign").innerHTML = `<p class="empty">No assignments yet.</p>`; return; }
+    const lab = v => !isFinite(v) ? "more" : v < 1 ? `${v * 1000}ms` : `${v}s`;
+    const bars = b.map(([le, c], i) => ({label: lab(le), value: c - (i ? b[i - 1][1] : 0), unit: "assignments",
+      tip: i ? `${lab(b[i - 1][0])} to ${lab(le)}` : `under ${lab(le)}`})).filter((x, i) => i < b.length);
+    barChart($("#c-assign"), {bars, height: 280, color: cssv("--s-assigned"), caption: "Assignments by time to find a courier"});
+  }
+  async function loadInitial() {
+    try {
+      const [os, cs] = await Promise.all([api("/api/orders?status=CREATED,ASSIGNING,ASSIGNED,PICKED_UP&limit=500"), api("/api/couriers?limit=2000")]);
+      for (const c of cs) if (c.status !== "OFFLINE") { const k = upsertCourier(c.id, {name: c.name, status: c.status, lat: c.lat, lng: c.lng, ts: c.location_ts}); k.order = c.active_order_id; }
+      for (const o of os) if (!orders.has(o.id)) orders.set(o.id, o);
+    } catch {}
+  }
+  let tThrough = 0, loaded = false;
+  Ops.listeners.add(onEvent);
+  window.addEventListener("df-summary", onSummary);
+  window.addEventListener("df-metrics", onMetrics);
+  window.addEventListener("df-theme", () => { if (active) { resize(); loadThroughput(); if (Live.summary) onSummary({detail: Live.summary}); if (Live.metrics) onMetrics({detail: Live.metrics}); } });
+  window.addEventListener("resize", () => { if (active) { resize(); loadThroughput(); if (Live.metrics) onMetrics({detail: Live.metrics}); } });
+  return {
+    async show() {
+      active = true; if (!loaded) { loaded = true; await loadInitial(); }
+      resize(); renderFeed(); cancelAnimationFrame(raf); raf = requestAnimationFrame(frame);
+      loadThroughput(); tThrough = setInterval(loadThroughput, 5000);
+      if (Live.summary) onSummary({detail: Live.summary}); if (Live.metrics) onMetrics({detail: Live.metrics});
+    },
+    hide() { active = false; cancelAnimationFrame(raf); clearInterval(tThrough); },
+  };
+})();
+
+/* ============================================================ MERCHANT */
+const Merchant = (() => {
+  const COLS = [["wait", "Finding a courier", ["CREATED", "ASSIGNING"], "--s-wait"], ["coming", "Courier coming", ["ASSIGNED"], "--s-assigned"],
+                ["road", "Out for delivery", ["PICKED_UP"], "--s-onway"], ["done", "Done", ["DELIVERED", "CANCELLED", "FAILED"], "--s-done"]];
+  let mid = store.get("df-merchant", "merchant-01"), stream = null, orders = new Map(), active = false, tick = 0, poll = 0, couriers = new Map(), lastBody = null, lastKey = null, firstId = null;
+  const board = $("#board");
+  board.innerHTML = COLS.map(([k, t, , v]) => `<div class="col" data-col="${k}"><h3><span class="bar" style="background:var(${v})"></span>${t}<span class="count">0</span></h3><div class="list"></div></div>`).join("");
+  function colOf(st) { return COLS.find(c => c[2].includes(st))?.[0] || "wait"; }
+  function ticket(o, fresh) {
+    const el = document.createElement("div"); el.className = `ticket st-${o.status}${fresh && !reduceMotion ? " arrive" : ""}`; el.dataset.id = o.id;
+    const who = o.courier_name || (o.courier_id ? couriers.get(o.courier_id) || `courier ${short(o.courier_id)}` : null);
+    const right = o.status === "DELIVERED" && o.delivered_at ? `in ${secs((new Date(o.delivered_at) - new Date(o.created_at)) / 1000)}`
+      : o.status === "FAILED" ? "no courier found" : o.status === "CANCELLED" ? "cancelled" : `<span data-ago="${esc(o.created_at)}">${ago(o.created_at)}</span>`;
+    el.innerHTML = `<div class="row" style="margin-top:0"><span class="id">#${short(o.id)}</span><span>${right}</span></div>
+      <div class="row"><span>${esc(o.consumer_id)}</span><span>${who ? esc(who) : (o.status === "ASSIGNING" && o.assignment_attempts > 1 ? `try ${o.assignment_attempts}` : "")}</span></div>`;
+    return el;
+  }
+  function render(changedId) {
+    const groups = Object.fromEntries(COLS.map(c => [c[0], []]));
+    for (const o of orders.values()) groups[colOf(o.status)].push(o);
+    groups.done.sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at));
+    for (const k of ["wait", "coming", "road"]) groups[k].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    const extra = groups.done.splice(8);
+    extra.forEach(o => orders.delete(o.id));
+    for (const [k] of COLS) {
+      const col = $(`[data-col="${k}"]`, board), list = $(".list", col);
+      list.innerHTML = ""; groups[k].forEach(o => list.appendChild(ticket(o, o.id === changedId)));
+      if (!groups[k].length) list.innerHTML = `<p class="muted" style="font-size:13px;margin:6px 4px">${k === "done" ? "Delivered orders land here." : "None right now."}</p>`;
+      $(".count", col).textContent = groups[k].length;
+    }
+  }
+  function frameRow(ul, e, kind) {
+    const li = document.createElement("li"); if (!reduceMotion) li.className = "new";
+    li.innerHTML = `<span class="eid">${e.id != null ? `#${e.id}` : "live"}</span><code>${esc(e.type)}${e.order_id ? ` <span class="muted">${short(e.order_id)}</span>` : ""}</code>`
+      + `<span class="tag${kind === "replay" ? " rp" : ""}">${kind === "replay" ? "replayed" : kind === "dup" ? "duplicate dropped" : clock(e.ts)}</span>`;
+    ul.prepend(li); while (ul.children.length > 40) ul.lastChild.remove();
+  }
+  function onEvent(e) {
+    if (e.type === "courier.location" || e.type === "courier.status") return;
+    const st = TYPE_STATUS[e.type]; if (!st) return;
+    let o = orders.get(e.order_id), p = e.payload || {};
+    if (!o) { if (e.type !== "order.created") { api(`/api/orders/${e.order_id}?fresh=true`).then(x => { orders.set(x.id, x); render(x.id); }).catch(() => {}); return; } o = {...p}; orders.set(e.order_id, o); }
+    o.status = st; o.updated_at = e.ts;
+    if (e.type === "order.assigned") { o.courier_id = p.courier_id; o.courier_name = p.courier_name; couriers.set(p.courier_id, p.courier_name); }
+    if (e.type === "order.reassigning") { o.courier_id = null; o.courier_name = null; }
+    if (e.type === "order.assignment_retry") o.assignment_attempts = p.attempt;
+    if (e.type === "order.delivered") o.delivered_at = e.ts;
+    render(o.id); loadStats();
+  }
+  async function loadStats() {
+    try {
+      const rows = await api("/api/merchants?window_minutes=60");
+      const names = [...new Set([...rows.map(r => r.merchant_id), ...Array.from({length: 12}, (_, i) => `merchant-${String(i + 1).padStart(2, "0")}`)])].sort();
+      const by = Object.fromEntries(rows.map(r => [r.merchant_id, r]));
+      const pick = $("#mpick");
+      pick.innerHTML = names.map(n => { const r = by[n]; const act = r ? r.waiting + r.courier_coming + r.on_the_way : 0;
+        return `<button type="button" data-m="${esc(n)}" aria-pressed="${n === mid}"><b>${esc(n)}</b><span>${act} active</span></button>`; }).join("");
+      $$("button", pick).forEach(b => b.addEventListener("click", () => select(b.dataset.m)));
+      const r = by[mid] || {total: 0, waiting: 0, courier_coming: 0, on_the_way: 0, delivered: 0, problems: 0, avg_match_s: 0, avg_delivery_s: 0};
+      const f = (k, v, d) => `<div class="fig"><div class="k">${k}</div><div class="v num">${v}</div><div class="d">${d}</div></div>`;
+      $("#mstats").innerHTML = f("Orders, last hour", fmt(r.total), `${fmt(r.problems)} cancelled or unmatched`) + f("Finding a courier", fmt(r.waiting), "right now")
+        + f("Courier coming", fmt(r.courier_coming), "heading to you") + f("Out for delivery", fmt(r.on_the_way), "picked up")
+        + f("Time to a courier", r.total ? secs(r.avg_match_s) : "–", "average, last hour") + f("Order to door", r.delivered ? secs(r.avg_delivery_s) : "–", `average of ${fmt(r.delivered)} delivered`);
+    } catch {}
+  }
+  async function loadCouriers() {
+    try { (await api("/api/couriers?limit=2000")).forEach(c => couriers.set(c.id, c.name)); } catch {}
+  }
+  async function select(m) {
+    if (!couriers.size) await loadCouriers();
+    mid = m; store.set("df-merchant", m); orders = new Map();
+    $$("#mpick button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.m === m)));
+    $("#m-frames").innerHTML = ""; if (stream) stream.stop();
+    stream = new Stream({role: "merchant", id: m}, {onEvent, onState: s => connBadge($("#m-conn"), s),
+      onFrame: (e, k) => { if (e.type !== "courier.location") frameRow($("#m-frames"), e, k); }});  // GPS pings would drown the log
+    try {
+      const [act, done] = await Promise.all([api(`/api/orders?merchant_id=${encodeURIComponent(m)}&status=CREATED,ASSIGNING,ASSIGNED,PICKED_UP&limit=200`),
+        api(`/api/orders?merchant_id=${encodeURIComponent(m)}&status=DELIVERED,CANCELLED,FAILED&limit=8`)]);
+      for (const o of [...done, ...act]) if (!orders.has(o.id)) orders.set(o.id, o);
+    } catch {}
+    render(); loadStats();
+  }
+  // ---- idempotency demo
+  const newKey = () => { lastKey = `ui-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`; $("#ikey").value = lastKey; lastBody = null; firstId = null;
+    $("#iagain").disabled = true; $("#ledger").innerHTML = ""; $("#verdict").innerHTML = ""; };
+  async function send(again) {
+    if (!again) {
+      const r = () => +(Math.random()).toFixed(6);
+      lastBody = {merchant_id: mid, consumer_id: `consumer-ui-${Math.floor(1000 + Math.random() * 9000)}`,
+        pickup: {lat: +(37.735 + r() * 0.055).toFixed(6), lng: +(-122.47 + r() * 0.075).toFixed(6)},
+        dropoff: {lat: +(37.735 + r() * 0.055).toFixed(6), lng: +(-122.47 + r() * 0.075).toFixed(6)}};
+    }
+    const btn = again ? $("#iagain") : $("#isend"); btn.disabled = true;
+    const t0 = performance.now();
+    try {
+      const res = await fetch("/api/orders", {method: "POST", headers: {"Content-Type": "application/json", "Idempotency-Key": lastKey}, body: JSON.stringify(lastBody)});
+      const body = await res.json(), took = performance.now() - t0, replay = res.headers.get("Idempotent-Replay") === "true";
+      const li = document.createElement("li");
+      li.innerHTML = `<span class="code c${res.status}">${res.status}</span><span>${res.status === 201 ? "Created" : res.status === 200 ? "OK" : "Error"}, order <b>#${short(body.id)}</b></span>`
+        + `<small>${replay ? "Idempotent-Replay: true, " : ""}${Math.round(took)} ms</small>`;
+      $("#ledger").appendChild(li);
+      if (!again) { firstId = body.id; $("#iagain").disabled = false; $("#isend").disabled = true; }
+      else {
+        const same = body.id === firstId;
+        $("#verdict").innerHTML = `<div class="verdict${same ? "" : " bad"}">${same ? `Same order returned. No duplicate was created, and the merchant board still shows one ticket for #${short(firstId)}.` : "A different order came back. This should never happen."}</div>`;
+        $("#iagain").disabled = false;
+      }
+    } catch (err) { const li = document.createElement("li"); li.innerHTML = `<span class="code err">ERR</span><span>${esc(err.message)}</span>`; $("#ledger").appendChild(li); btn.disabled = false; }
+  }
+  $("#inew").addEventListener("click", () => { newKey(); $("#isend").disabled = false; });
+  $("#isend").addEventListener("click", () => send(false));
+  $("#iagain").addEventListener("click", () => send(true));
+  newKey();
+  return {
+    show() { active = true; select(mid); tick = setInterval(() => $$("[data-ago]", board).forEach(s => s.textContent = ago(s.dataset.ago)), 1000); poll = setInterval(loadStats, 10000); },
+    hide() { active = false; clearInterval(tick); clearInterval(poll); if (stream) { stream.stop(); stream = null; } },
+  };
+})();
+
+/* ============================================================ CUSTOMER */
+const Customer = (() => {
+  let stream = null, order = null, courier = null, consumer = null, active = false, listTimer = 0, raf = 0, P = null, base = null, ctx = null, W = 0, H = 0, dpr = 1;
+  const cv = $("#c-map");
+  function resize() {
+    const r = cv.getBoundingClientRect(); W = r.width; H = r.height; if (!W) return; dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = W * dpr; cv.height = H * dpr; ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); makeBase();
+  }
+  function makeBase() {
+    if (!W) return;
+    let b = BOUNDS;
+    if (order) { const pts = [order.pickup, order.dropoff, courier && courier.lat != null ? courier : null].filter(Boolean);
+      const la = pts.map(p => p.lat), ln = pts.map(p => p.lng), m = 0.006;
+      b = {lat0: Math.min(...la) - m, lat1: Math.max(...la) + m, lng0: Math.min(...ln) - m * 1.3, lng1: Math.max(...ln) + m * 1.3};
+      const cx = (b.lng0 + b.lng1) / 2, cy = (b.lat0 + b.lat1) / 2, aspect = W / H;  // keep the map's aspect so streets aren't stretched
+      let sw = (b.lng1 - b.lng0) * KX, sh = b.lat1 - b.lat0; if (sw / sh < aspect) sw = sh * aspect; else sh = sw / aspect;
+      b = {lat0: cy - sh / 2, lat1: cy + sh / 2, lng0: cx - sw / KX / 2, lng1: cx + sw / KX / 2}; }
+    P = projector(W, H, 0, b);
+    base = document.createElement("canvas"); base.width = W * dpr; base.height = H * dpr;
+    const g = base.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    drawBase(g, P, W, H, {dense: true, noLabels: !order});
+  }
+  function draw() {
+    raf = requestAnimationFrame(draw);
+    if (!ctx || !base) return;
+    ctx.drawImage(base, 0, 0, W, H);
+    if (!order) return;
+    const [px, py] = P.f(order.pickup.lat, order.pickup.lng), [dx, dy] = P.f(order.dropoff.lat, order.dropoff.lng);
+    const st = order.status, on = cssv("--s-onway"), as = cssv("--s-assigned"), ink = cssv("--ink"), sheet = cssv("--sheet");
+    ctx.lineCap = "round";
+    ctx.strokeStyle = on; ctx.globalAlpha = st === "PICKED_UP" ? .35 : .25; ctx.lineWidth = 3; ctx.setLineDash([2, 6]); ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(dx, dy); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    if (courier && courier.lat != null && (st === "ASSIGNED" || st === "PICKED_UP")) {
+      const k = reduceMotion ? 1 : 0.07; courier.dlat += (courier.lat - courier.dlat) * k; courier.dlng += (courier.lng - courier.dlng) * k;
+      const [cx, cy] = P.f(courier.dlat, courier.dlng), [tx, ty] = st === "ASSIGNED" ? [px, py] : [dx, dy];
+      ctx.strokeStyle = st === "ASSIGNED" ? as : on; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(tx, ty); ctx.stroke();
+      ctx.fillStyle = st === "ASSIGNED" ? as : on; ctx.globalAlpha = .2; ctx.beginPath(); ctx.arc(cx, cy, 14, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = sheet; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(cx, cy, 7, 0, 7); ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = ink; ctx.fillRect(px - 5, py - 5, 10, 10);
+    ctx.fillStyle = sheet; ctx.strokeStyle = st === "DELIVERED" ? cssv("--s-done") : ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(dx, dy, 7, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.font = `600 12px "Archivo DF", system-ui, sans-serif`; ctx.fillStyle = ink; ctx.textAlign = "left";
+    ctx.fillText(order.merchant_id, px + 10, py + 4); ctx.fillText("You", dx + 11, dy + 4);
+  }
+  function setCourierPos(lat, lng) {
+    if (!courier) return; const first = courier.lat == null; courier.lat = lat; courier.lng = lng;
+    if (first) { courier.dlat = lat; courier.dlng = lng; makeBase(); }
+    else if (P && P.b && (lat < P.b.lat0 || lat > P.b.lat1 || lng < P.b.lng0 || lng > P.b.lng1)) makeBase();
+    paint();
+  }
+  function paint() {
+    const o = order; if (!o) return;
+    const cname = courier?.name || "Your courier";
+    const heads = {CREATED: ["Order received", "Looking for the nearest free courier."], ASSIGNING: ["Finding you a courier", o.assignment_attempts > 1 ? `Everyone nearby is busy. Trying again (attempt ${o.assignment_attempts}).` : "Matching you with the nearest free courier."],
+      ASSIGNED: [`${cname} is heading to ${o.merchant_id}`, ""], PICKED_UP: [`${cname} is on the way to you`, ""], DELIVERED: ["Delivered", `${secs((new Date(o.delivered_at) - new Date(o.created_at)) / 1000)} from order to door.`],
+      CANCELLED: ["Order cancelled", "Nothing will be delivered."], FAILED: ["We couldn't find a courier", "Every courier stayed busy through all retries. The order was closed."]};
+    const [h, sub] = heads[o.status] || [o.status, ""];
+    setText("c-head", h);
+    let s = sub;
+    if (courier && courier.lat != null && (o.status === "ASSIGNED" || o.status === "PICKED_UP")) {
+      const tgt = o.status === "ASSIGNED" ? o.pickup : o.dropoff, d = haversine(courier, tgt);
+      s = `${d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1)} km`} ${o.status === "ASSIGNED" ? "from the restaurant" : "from your door"}.`;
+    }
+    setText("c-sub", s); setText("c-from", `Order #${short(o.id)} from ${o.merchant_id}`);
+    const at = {CREATED: o.created_at, ASSIGNED: o.assigned_at, PICKED_UP: o.picked_up_at, DELIVERED: o.delivered_at};
+    const idx = {CREATED: 0, ASSIGNING: 0, ASSIGNED: 1, PICKED_UP: 2, DELIVERED: 3, CANCELLED: -1, FAILED: -1}[o.status];
+    const steps = [["CREATED", "Order placed", o.merchant_id], ["ASSIGNED", "Courier found", o.assignment_latency_ms != null ? `matched in ${ms(o.assignment_latency_ms)}` : ""],
+      ["PICKED_UP", "Picked up", ""], ["DELIVERED", "Delivered", ""]];
+    $("#c-steps").innerHTML = steps.map(([k, label, sm], i) => {
+      let cls = "", lbl = label;
+      if (idx < 0) { cls = i === 0 ? "done" : i === 1 ? "bad" : ""; if (i === 1) lbl = o.status === "FAILED" ? "No courier found" : "Cancelled"; }
+      else cls = i <= idx ? "done" : i === idx + 1 ? "now" : "";
+      if (k === "ASSIGNED" && courier?.name && idx >= 1) sm = `${courier.name}, ${sm}`;
+      const t = at[k] && (i === 0 || (idx >= 0 && i <= idx)) ? clock(at[k]) : "";
+      return `<li class="${cls}"><span class="pin"></span><div><b>${esc(lbl)}</b>${sm ? `<small>${esc(sm)}</small>` : ""}</div><time>${t}</time></li>`;
+    }).join("");
+  }
+  function frameRow(e, kind) {
+    const ul = $("#c-frames"), li = document.createElement("li"); if (!reduceMotion) li.className = "new";
+    const p = e.payload || {};
+    const what = e.type === "courier.location" ? `courier.location <span class="muted">${(+p.lat).toFixed(4)}, ${(+p.lng).toFixed(4)}</span>` : `${esc(e.type)}${e.order_id ? ` <span class="muted">${short(e.order_id)}</span>` : ""}`;
+    li.innerHTML = `<span class="eid">${e.id != null ? `#${e.id}` : "live"}</span><code>${what}</code><span class="tag${kind === "replay" ? " rp" : ""}">${kind === "replay" ? "replayed" : kind === "dup" ? "duplicate dropped" : clock(e.ts)}</span>`;
+    ul.prepend(li); while (ul.children.length > 60) ul.lastChild.remove();
+    const s = stream.stats; setText("c-n", fmt(s.events)); setText("c-rp", fmt(s.replayed)); setText("c-dup", fmt(s.dups)); setText("c-rc", fmt(s.reconnects));
+  }
+  function onEvent(e) {
+    const p = e.payload || {};
+    if (e.type === "courier.location") { if (order && courier && e.courier_id === courier.id) setCourierPos(p.lat, p.lng); return; }
+    if (e.type === "courier.status") return;
+    const st = TYPE_STATUS[e.type]; if (!st) return;
+    if (e.type === "order.created" && (!order || order.id !== e.order_id)) { if (order && order.id !== e.order_id && ACTIVE.includes(order.status)) return; order = {...p}; courier = null; makeBase(); }
+    if (!order || order.id !== e.order_id) return;
+    order.status = st;
+    if (e.type === "order.assigned") { order.assigned_at = e.ts; order.assignment_latency_ms = p.assignment_latency_ms; courier = {id: p.courier_id, name: p.courier_name, lat: null};
+      api(`/api/couriers/${p.courier_id}`).then(c => { if (courier && courier.id === c.id && courier.lat == null) setCourierPos(c.lat, c.lng); }).catch(() => {}); }
+    if (e.type === "order.reassigning") courier = null;
+    if (e.type === "order.assignment_retry") order.assignment_attempts = p.attempt;
+    if (e.type === "order.picked_up") order.picked_up_at = e.ts;
+    if (e.type === "order.delivered") { order.delivered_at = e.ts; makeBase(); }
+    paint();
+  }
+  async function follow(o) {
+    order = o; consumer = o.consumer_id; courier = null;
+    if (o.courier_id) { try { const c = await api(`/api/couriers/${o.courier_id}`); courier = {id: c.id, name: c.name, lat: c.lat, lng: c.lng, dlat: c.lat, dlng: c.lng}; } catch {} }
+    makeBase(); paint();
+    $$("#c-list button").forEach(b => b.setAttribute("aria-current", String(b.dataset.id === o.id)));
+    $("#c-frames").innerHTML = ""; if (stream) stream.stop();
+    // last_event_id=0 asks the server to replay this customer's whole history first, then stream live.
+    stream = new Stream({role: "consumer", id: consumer, last_event_id: 0}, {onEvent, onState: s => connBadge($("#c-conn"), s), onFrame: frameRow});
+    $("#c-drop").disabled = false;
+    store.set("df-follow", o.id);
+  }
+  async function loadList() {
+    try {
+      const os = await api("/api/orders?status=CREATED,ASSIGNING,ASSIGNED,PICKED_UP&limit=9");
+      const ul = $("#c-list");
+      if (!os.length) { ul.innerHTML = `<li class="empty">No deliveries in progress. Start the demo traffic, or place an order above.</li>`; return; }
+      ul.innerHTML = os.map(o => `<li><button type="button" data-id="${o.id}" aria-current="${order?.id === o.id}"><b>Order #${short(o.id)}</b><span class="chip st-${o.status}"><i></i>${STATUS[o.status].label.replace("Courier on the way to pickup", "Courier coming")}</span><small>${esc(o.consumer_id)} from ${esc(o.merchant_id)}</small></button></li>`).join("");
+      $$("button", ul).forEach(b => b.addEventListener("click", () => follow(os.find(o => o.id === b.dataset.id))));
+      if (!order) { const want = store.get("df-follow", ""); follow(os.find(o => o.id === want) || os[os.length - 1]); }
+    } catch {}
+  }
+  $("#c-new").addEventListener("click", async () => {
+    const r = () => Math.random(), merchant = `merchant-${String(1 + Math.floor(r() * 12)).padStart(2, "0")}`;
+    const body = {merchant_id: merchant, consumer_id: `consumer-ui-${Math.floor(1000 + r() * 9000)}`,
+      pickup: {lat: +(37.735 + r() * 0.055).toFixed(6), lng: +(-122.47 + r() * 0.075).toFixed(6)},
+      dropoff: {lat: +(37.735 + r() * 0.055).toFixed(6), lng: +(-122.47 + r() * 0.075).toFixed(6)}};
+    try { const o = await api("/api/orders", {method: "POST", headers: {"Content-Type": "application/json", "Idempotency-Key": `ui-c-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`}, body: JSON.stringify(body)});
+      follow(o); loadList(); } catch {}
+  });
+  $("#c-drop").addEventListener("click", () => { if (!stream) return; stream.drop(8000); const b = $("#c-drop"); b.disabled = true; setTimeout(() => { b.disabled = false; }, 9000); });
+  window.addEventListener("resize", () => { if (active) resize(); });
+  window.addEventListener("df-theme", () => { if (active) makeBase(); });
+  return {
+    show() { active = true; resize(); cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); loadList(); listTimer = setInterval(loadList, 6000); if (order) follow(order); },
+    hide() { active = false; cancelAnimationFrame(raf); clearInterval(listTimer); if (stream) { stream.stop(); stream = null; } },
+  };
+})();
+
+/* ============================================================ METRICS */
+const Metrics = (() => {
+  let active = false; const hist = [];
+  const byType = list => { const o = {}; (list || []).forEach(s => { if (s.name === "dispatchflow_sqs_messages_total") o[s.labels.type] = (o[s.labels.type] || 0) + s.value; }); return o; };
+  const buckets = (list, name, f = () => true) => { const m = new Map(); (list || []).filter(s => s.name === name && f(s.labels)).forEach(s => { const le = parseFloat(s.labels.le); m.set(le, (m.get(le) || 0) + s.value); });
+    return [...m.entries()].sort((a, b) => a[0] - b[0]); };
+  const diffB = (a, b) => a.map(([le, c], i) => [le, c - (b[i]?.[1] || 0)]);
+  function onMetrics({detail: m}) {
+    const prev = hist.length ? hist[hist.length - 1] : null;
+    const cur = {ts: m.ts, req: sumSamples(m.api, "dispatchflow_http_requests_total"), err: sumSamples(m.api, "dispatchflow_http_requests_total", l => l.status?.startsWith("5")),
+      hb: buckets(m.api, "dispatchflow_http_request_duration_seconds_bucket"), types: byType(m.worker), wmsg: sumSamples(m.worker, "dispatchflow_sqs_messages_total"),
+      pb: buckets(m.worker, "dispatchflow_sqs_process_seconds_bucket"), pub: sumSamples(m.worker, "dispatchflow_outbox_published_total"),
+      wsm: sumSamples(m.api, "dispatchflow_ws_messages_total", l => l.result === "sent")};
+    if (prev) { const dt = cur.ts - prev.ts; cur.rate = {req: (cur.req - prev.req) / dt, err: (cur.err - prev.err) / dt, wmsg: (cur.wmsg - prev.wmsg) / dt, pub: (cur.pub - prev.pub) / dt, wsm: (cur.wsm - prev.wsm) / dt,
+      p95: quantileFromBuckets(diffB(cur.hb, prev.hb), .95), types: Object.fromEntries(Object.keys(cur.types).map(k => [k, (cur.types[k] - (prev.types[k] || 0)) / dt])),
+      hp95: quantileFromBuckets(diffB(cur.pb, prev.pb), .95)}; }
+    hist.push(cur); if (hist.length > 120) hist.shift();
+    if (active) render(m);
+  }
+  function render(m) {
+    const last = hist[hist.length - 1], r = last.rate || {};
+    const s = Live.summary || {};
+    const hit = sumSamples(m.api, "dispatchflow_cache_requests_total", l => l.result === "hit"), all = sumSamples(m.api, "dispatchflow_cache_requests_total");
+    const al = buckets(m.worker, "dispatchflow_assignment_latency_seconds_bucket");
+    const rss = (list) => { const v = (list || []).find(x => x.name === "process_resident_memory_bytes"); return v ? `${Math.round(v.value / 1048576)} MB` : "–"; };
+    const f = (k, v, d) => `<div class="fig"><div class="k">${k}</div><div class="v num">${v}</div><div class="d">${d}</div></div>`;
+    $("#mfigs").innerHTML =
+      f("API requests", `${fmt1(r.req)}<small>/s</small>`, `${fmt1(r.err || 0)}/s server errors`)
+      + f("API latency, p95", r.p95 != null ? ms(r.p95 * 1000) : "–", "this instance, last 3 seconds")
+      + f("Queue messages", m.worker ? `${fmt1(r.wmsg)}<small>/s</small>` : "–", m.worker ? `handler p95 ${r.hp95 != null ? ms(r.hp95 * 1000) : "–"}` : "worker metrics unreachable")
+      + f("Outbox to SQS", m.worker ? `${fmt1(r.pub)}<small>/s</small>` : "–", `${fmt(s.outbox_backlog ?? 0)} waiting`)
+      + f("Time to a courier, p50", al.length ? secs(quantileFromBuckets(al, .5)) : "–", al.length ? `p95 ${secs(quantileFromBuckets(al, .95))}, since worker start` : "")
+      + f("Cache hit rate", all ? `${Math.round(hit / all * 100)}%` : "–", `${fmt(all)} order reads served via Redis`)
+      + f("WebSocket messages", `${fmt1(r.wsm)}<small>/s</small>`, `${fmt(s.ws_connections ?? 0)} connections open`)
+      + f("Memory", rss(m.api), `API; worker ${rss(m.worker)}`);
+    const h = hist.filter(x => x.rate), xs = h.map(x => x.ts * 1000), xf = t => clock(t);
+    if (h.length > 1) {
+      lineChart($("#mc-req"), {x: xs, xFmt: xf, yFmt: fmt1, height: 180, series: [{name: "Requests/s", color: cssv("--s-assigned"), values: h.map(x => Math.max(0, x.rate.req))}]});
+      const types = [...new Set(h.flatMap(x => Object.keys(x.rate.types)))].sort();
+      const pal = [cssv("--s-assigned"), cssv("--s-wait"), cssv("--s-onway"), cssv("--s-done")];
+      $("#mc-msg-lg").innerHTML = types.map((t, i) => `<span><i class="lg-line" style="background:${pal[i % 4]}"></i>${esc(t)}</span>`).join("");
+      if (types.length) lineChart($("#mc-msg"), {x: xs, xFmt: xf, yFmt: fmt1, height: 180, series: types.map((t, i) => ({name: t, color: pal[i % 4], values: h.map(x => Math.max(0, x.rate.types[t] || 0))}))});
+      else $("#mc-msg").innerHTML = `<p class="empty">${m.worker ? "No messages yet." : "Worker metrics not reachable from the API."}</p>`;
+      lineChart($("#mc-p95"), {x: xs, xFmt: xf, yFmt: v => ms(v), height: 180, series: [{name: "p95", color: cssv("--s-onway"), values: h.map(x => x.rate.p95 == null ? null : x.rate.p95 * 1000)}]});
+    } else ["#mc-req", "#mc-msg", "#mc-p95"].forEach(id => { $(id).innerHTML = `<p class="empty">Collecting a few samples…</p>`; });
+    // routes table
+    const routes = {};
+    (m.api || []).forEach(x => { if (x.name === "dispatchflow_http_requests_total") { const k = `${x.labels.method} ${x.labels.route}`; routes[k] = routes[k] || {n: 0, e: 0}; routes[k].n += x.value; if (x.labels.status?.startsWith("5")) routes[k].e += x.value; } });
+    const rows = Object.entries(routes).sort((a, b) => b[1].n - a[1].n).slice(0, 14).map(([k, v]) => {
+      const [meth, ...rest] = k.split(" "), b = buckets(m.api, "dispatchflow_http_request_duration_seconds_bucket", l => l.method === meth && l.route === rest.join(" "));
+      return `<tr><td>${esc(k)}</td><td class="r">${fmt(v.n)}</td><td class="r">${ms(quantileFromBuckets(b, .5) * 1000)}</td><td class="r">${ms(quantileFromBuckets(b, .95) * 1000)}</td><td class="r">${fmt(v.e)}</td></tr>`; });
+    $("#mt-routes").innerHTML = `<thead><tr><th>Route</th><th class="r">Requests</th><th class="r">p50</th><th class="r">p95</th><th class="r">5xx</th></tr></thead><tbody>${rows.join("") || `<tr><td colspan="5" class="muted">No requests yet</td></tr>`}</tbody>`;
+    if (!m.worker) { $("#mt-worker").innerHTML = ""; $("#mt-wk-note").textContent = "The worker's metrics endpoint isn't reachable from this API (normal when they run as separate ECS tasks; Prometheus still scrapes both)."; return; }
+    const w = m.worker, g = (n, f = () => true) => sumSamples(w, n, f);
+    const wr = [["Messages acknowledged", g("dispatchflow_sqs_messages_total", l => l.outcome === "ack")], ["Messages retried with backoff", g("dispatchflow_sqs_messages_total", l => l.outcome === "retry")],
+      ["Messages that errored", g("dispatchflow_sqs_messages_total", l => l.outcome === "error")], ["Couriers assigned", g("dispatchflow_assignment_attempts_total", l => l.result === "assigned")],
+      ["No courier free, retried", g("dispatchflow_assignment_attempts_total", l => l.result === "no_courier")], ["Gave up after all retries", g("dispatchflow_assignment_attempts_total", l => l.result === "exhausted")],
+      ["Duplicate messages ignored", g("dispatchflow_duplicates_absorbed_total")], ["Assignments reclaimed after timeout", g("dispatchflow_assignment_timeouts_total")],
+      ["Stuck orders re-queued", g("dispatchflow_orders_redriven_total")], ["Outbox rows published", g("dispatchflow_outbox_published_total")]];
+    $("#mt-worker").innerHTML = `<thead><tr><th>Counter</th><th class="r">Total</th></tr></thead><tbody>${wr.map(([k, v]) => `<tr><td>${k}</td><td class="r">${fmt(v)}</td></tr>`).join("")}</tbody>`;
+    $("#mt-wk-note").textContent = "Since the worker started.";
+  }
+  window.addEventListener("df-metrics", onMetrics);
+  window.addEventListener("df-theme", () => { if (active && Live.metrics) render(Live.metrics); });
+  window.addEventListener("resize", () => { if (active && Live.metrics) render(Live.metrics); });
+  return {show() { active = true; if (Live.metrics) render(Live.metrics); else $("#mfigs").innerHTML = `<p class="empty">Reading metrics…</p>`; }, hide() { active = false; }};
+})();
+
+/* ============================================================ LOAD TEST */
+const LoadTest = (() => {
+  let kind = "chaos", reports = {};
+  async function load(k) {
+    if (!(k in reports)) { try { reports[k] = await api(`/api/loadtest/latest?kind=${k}`); } catch { reports[k] = null; } }
+    return reports[k];
+  }
+  async function render() {
+    const rep = await load(kind);
+    $$("#lt-kind button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === kind)));
+    if (!rep) { $("#lt-head").textContent = "No load test has been run yet."; $("#lt-body").hidden = true;
+      $("#lt-env").textContent = ""; return; }
+    $("#lt-body").hidden = false;
+    const v = rep.volume, inv = rep.invariants || [], passed = inv.filter(i => i.passed).length, chaos = rep.chaos || [];
+    $("#lt-head").innerHTML = `${fmt(v.total_simulated_events)} simulated order and courier events${chaos.length ? `, ${chaos.length} outages` : ""}. <span class="q">${passed} of ${inv.length} correctness checks held.</span>`;
+    const f = (k, val, d) => `<div class="fig"><div class="k">${k}</div><div class="v num">${val}</div><div class="d">${d}</div></div>`;
+    $("#lt-facts").innerHTML = f("Orders", fmt(v.orders_unique), `${rep.throughput.orders_per_s_submitted}/s for ${Math.round(rep.meta.submit_seconds)}s`)
+      + f("Duplicate creates", fmt(v.duplicate_create_requests), `${fmt(rep.reliability.idempotent_replays_returned)} returned the original`)
+      + f("Repeated courier taps", fmt(v.courier_dup_actions), `${fmt(rep.reliability.duplicate_transitions_absorbed)} absorbed as no-ops`)
+      + f("Late updates", fmt(v.late_pickups_after_delivery), "pickup arriving after delivery")
+      + f("Client retries", fmt(rep.reliability.client_retries), `${fmt(rep.reliability.client_gave_up)} requests gave up`)
+      + f("Courier rejections", fmt(v.rejections), `${fmt(rep.reliability.orders_reassigned_after_rejection)} reassigned`);
+    const T = rep.timeline?.series || [];
+    if (T.length > 2) {
+      const x = T.map(t => t.t), idx = s => x.findIndex(t => t >= s);
+      const bands = chaos.map(c => ({i0: Math.max(0, idx(c.at_s)), i1: idx(c.at_s + c.duration_s) < 0 ? x.length - 1 : idx(c.at_s + c.duration_s), label: ""}));
+      lineChart($("#lt-time"), {x, xFmt: t => `${Math.round(t)}s`, height: 260, bands,
+        series: [{name: "Placed", color: cssv("--s-assigned"), values: T.map(t => t.created)}, {name: "Delivered", color: cssv("--s-done"), values: T.map(t => t.delivered)}],
+        lower: {name: "Failed requests", color: cssv("--bad"), values: T.map(t => t.errors)}});
+    } else $("#lt-time").innerHTML = `<p class="empty">This report predates the per-second timeline. Re-run the load test to record one.</p>`;
+    $("#lt-outages").innerHTML = chaos.map(c => `<li><span class="muted">at ${Math.round(c.at_s)}s</span><span>${esc(c.name.charAt(0).toUpperCase() + c.name.slice(1))}</span><span class="muted">${c.duration_s.toFixed(1)}s</span></li>`).join("")
+      || `<li><span></span><span class="muted">No outages were injected in this run.</span><span></span></li>`;
+    $("#lt-checks").innerHTML = inv.map(i => `<li><span class="mk${i.passed ? "" : " no"}" aria-label="${i.passed ? "passed" : "failed"}"></span><span>${esc(i.name.charAt(0).toUpperCase() + i.name.slice(1))}</span><small>${esc(i.detail)}</small></li>`).join("");
+    const L = rep.latency_ms, keys = Object.keys(L).filter(k => !["ready", "stats", "ALL"].includes(k)).sort((a, b) => L[b].count - L[a].count);
+    $("#lt-lat").innerHTML = `<thead><tr><th>Endpoint</th><th class="r">Calls</th><th class="r">p50</th><th class="r">p95</th><th class="r">p99</th></tr></thead><tbody>`
+      + keys.map(k => `<tr><td>${esc(k)}</td><td class="r">${fmt(L[k].count)}</td><td class="r">${fmt1(L[k].p50)}</td><td class="r">${fmt(L[k].p95)}</td><td class="r">${fmt(L[k].p99)}</td></tr>`).join("")
+      + (L.ALL ? `<tr><td><b>All workload calls</b></td><td class="r"><b>${fmt(L.ALL.count)}</b></td><td class="r"><b>${fmt1(L.ALL.p50)}</b></td><td class="r"><b>${fmt(L.ALL.p95)}</b></td><td class="r"><b>${fmt(L.ALL.p99)}</b></td></tr>` : "") + `</tbody>`;
+    const o = rep.outcomes.by_status, tot = rep.outcomes.orders_total, al = rep.assignment_latency_s, tt = rep.order_total_time_s;
+    const seg = ["DELIVERED", "CANCELLED", "FAILED"].filter(k => o[k]);
+    $("#lt-out").innerHTML = `<div class="stack" role="img" aria-label="Order outcomes">${seg.map(k => `<span style="flex-grow:${o[k] / tot};background:var(${STATUS[k].v})"></span>`).join("")}</div>
+      <div class="dist">${seg.map(k => `<span class="chip st-${k}" style="background:none;border:0;padding-left:0"><i></i>${STATUS[k].label}</span><span class="n">${fmt(o[k])} <span class="muted">(${(o[k] / tot * 100).toFixed(1)}%)</span></span>`).join("")}</div>
+      <table style="margin-top:18px"><tbody>
+      <tr><td>Time to find a courier</td><td class="r">p50 ${secs(al.p50)}</td><td class="r">p95 ${secs(al.p95)}</td></tr>
+      <tr><td>Order to door (simulated travel)</td><td class="r">p50 ${secs(tt.p50)}</td><td class="r">p95 ${secs(tt.p95)}</td></tr>
+      <tr><td>Events persisted</td><td class="r" colspan="2">${fmt(v.order_events_persisted)}</td></tr>
+      <tr><td>Events pushed over WebSocket</td><td class="r" colspan="2">${fmt(v.live_events_over_websocket)}</td></tr>
+      </tbody></table>
+      ${o.FAILED ? `<p class="note" style="margin-top:12px">${fmt(o.FAILED)} orders closed as “no courier found”. They were placed while ${chaos.some(c => c.name.includes("shift")) ? "90% of couriers went off shift, and" : ""} every retry found no free courier. The system told the customer instead of leaving them waiting.</p>` : ""}`;
+    const e = rep.meta.environment || {};
+    $("#lt-env").textContent = `Run finished ${new Date(rep.meta.finished_at).toLocaleString()}. ${e.note || ""} (${e.cpus} CPUs, Python ${e.python}). Mode: ${rep.meta.mode}, seed ${rep.meta.params.seed}.`;
+  }
+  $$("#lt-kind button").forEach(b => b.addEventListener("click", () => { kind = b.dataset.k; render(); }));
+  window.addEventListener("df-theme", () => { if (!$("#v-loadtest").hidden) render(); });
+  return {async show() { const s = await load("steady"); $('#lt-kind [data-k="steady"]').disabled = !s; render(); }, hide() {}};
+})();
+
+/* ============================================================ router */
+const VIEWS = {control: Control, merchant: Merchant, customer: Customer, metrics: Metrics, loadtest: LoadTest};
+let current = null;
+function route() {
+  const name = (location.hash || "#control").slice(1);
+  const v = VIEWS[name] ? name : "control";
+  if (current === v) return;
+  if (current) VIEWS[current].hide();
+  $$("section.view").forEach(sec => { sec.hidden = sec.id !== `v-${v}`; });
+  current = v; $(`#v-${v}`).hidden = false;
+  $$(".views a").forEach(a => a.setAttribute("aria-current", a.dataset.view === v ? "page" : "false"));
+  document.title = `DispatchFlow: ${$(`.views a[data-view="${v}"]`).textContent}`;
+  VIEWS[v].show();
+}
+window.addEventListener("hashchange", route);
+pollSummary(); pollMetrics(); setTimeout(pollMetrics, 1200);
+setInterval(pollSummary, 2000); setInterval(pollMetrics, 3000);
+route();
+</script>
+</body>
+</html>

@@ -1,0 +1,1505 @@
+{
+  "meta": {
+    "finished_at": "2026-10-09T20:53:48.418785+00:00",
+    "mode": "load+chaos",
+    "params": {
+      "orders": 4000,
+      "rate_per_s": 15.0,
+      "couriers": 150,
+      "api_instances": 2,
+      "p_duplicate_create": 0.15,
+      "p_reject": 0.05,
+      "p_duplicate_action": 0.12,
+      "p_late_pickup": 0.08,
+      "p_cancel": 0.03,
+      "seed": 7
+    },
+    "environment": {
+      "python": "3.13.16",
+      "cpus": 2,
+      "platform": "Linux-6.18.44-fc-v114-x86_64-with-glibc2.39",
+      "note": "single machine: PostgreSQL, Redis, SQS emulator (moto), 2 API processes, 1 worker and the load generator all share it"
+    },
+    "submit_seconds": 266.6,
+    "total_seconds": 270.1,
+    "drained": true
+  },
+  "volume": {
+    "orders_unique": 4000,
+    "duplicate_create_requests": 1205,
+    "client_requests_logical": 25171,
+    "client_requests_incl_retries": 27356,
+    "gps_pings": 7918,
+    "courier_dup_actions": 1794,
+    "late_pickups_after_delivery": 298,
+    "rejections": 217,
+    "poison_messages": 6,
+    "order_events_persisted": 20461,
+    "live_events_over_websocket": 36151,
+    "total_simulated_events": 45632
+  },
+  "throughput": {
+    "orders_per_s_submitted": 15.0,
+    "requests_per_s": 101.3,
+    "delivered_per_s": 14.6
+  },
+  "latency_ms": {
+    "GET /couriers/:id": {
+      "count": 1487,
+      "p50": 7.4,
+      "p95": 1119.4,
+      "p99": 2704.3,
+      "max": 5083.0
+    },
+    "GET /orders/:id?fresh": {
+      "count": 85,
+      "p50": 589.4,
+      "p95": 3284.0,
+      "p99": 6807.2,
+      "max": 6807.2
+    },
+    "POST /couriers": {
+      "count": 150,
+      "p50": 468.9,
+      "p95": 786.0,
+      "p99": 818.1,
+      "max": 820.3
+    },
+    "POST /couriers/:id/status": {
+      "count": 274,
+      "p50": 122.7,
+      "p95": 1096.4,
+      "p99": 1828.6,
+      "max": 1854.5
+    },
+    "POST /orders": {
+      "count": 5531,
+      "p50": 28.0,
+      "p95": 2740.4,
+      "p99": 4465.0,
+      "max": 8181.1
+    },
+    "POST /orders/:id/cancel": {
+      "count": 123,
+      "p50": 29.0,
+      "p95": 2694.7,
+      "p99": 4344.4,
+      "max": 5998.8
+    },
+    "POST /orders/:id/deliver": {
+      "count": 5000,
+      "p50": 37.2,
+      "p95": 2630.2,
+      "p99": 4805.7,
+      "max": 11595.2
+    },
+    "POST /orders/:id/pickup": {
+      "count": 4925,
+      "p50": 38.6,
+      "p95": 2651.5,
+      "p99": 4551.6,
+      "max": 8255.6
+    },
+    "POST /orders/:id/reject": {
+      "count": 219,
+      "p50": 52.4,
+      "p95": 2566.5,
+      "p99": 3295.5,
+      "max": 4477.6
+    },
+    "PUT /couriers/:id/location": {
+      "count": 8152,
+      "p50": 29.7,
+      "p95": 2631.5,
+      "p99": 4586.0,
+      "max": 11482.7
+    },
+    "ready": {
+      "count": 1,
+      "p50": 29.0,
+      "p95": 29.0,
+      "p99": 29.0,
+      "max": 29.0
+    },
+    "stats": {
+      "count": 1,
+      "p50": 20.3,
+      "p95": 20.3,
+      "p99": 20.3,
+      "max": 20.3
+    },
+    "ALL": {
+      "count": 25796,
+      "p50": 29.6,
+      "p95": 2592.1,
+      "p99": 4535.0,
+      "max": 11595.2
+    }
+  },
+  "outcomes": {
+    "orders_total": 4000,
+    "by_status": {
+      "CANCELLED": 69,
+      "DELIVERED": 3931
+    },
+    "failed_by_reason": {}
+  },
+  "assignment_latency_s": {
+    "p50": 0.210847,
+    "p95": 1.6997654999999992,
+    "p99": 5.8046279400000005,
+    "max": 19.104182,
+    "n": 3987
+  },
+  "order_total_time_s": {
+    "p50": 1.205126,
+    "p95": 11.539297000000001,
+    "p99": 17.913660899999993,
+    "max": 35.092764,
+    "n": 3931
+  },
+  "reliability": {
+    "idempotent_replays_returned": 1205,
+    "duplicate_transitions_absorbed": 1789,
+    "stale_updates_ignored": 300,
+    "transitions_applied": 7846,
+    "orders_with_assignment_retries": 80,
+    "orders_reassigned_after_rejection": 199,
+    "client_retries": 2185,
+    "client_connection_errors": 1408,
+    "client_5xx_seen": 777,
+    "client_gave_up": 0,
+    "websocket_reconnects": 2,
+    "websocket_lagged": 0,
+    "courier_pull_recoveries": 85,
+    "orders_redriven_by_reconciler": 0,
+    "assignments_reclaimed_after_courier_timeout": 0,
+    "agent_errors": 0,
+    "events_by_type": {
+      "order.delivered": 3931,
+      "order.reassigning": 213,
+      "order.assignment_retry": 129,
+      "order.cancelled": 69,
+      "order.assigning": 3988,
+      "order.assigned": 4200,
+      "order.picked_up": 3931,
+      "order.created": 4000
+    }
+  },
+  "chaos": [
+    {
+      "name": "worker killed (SIGKILL) mid-flight",
+      "at_s": 32.0,
+      "duration_s": 6.9
+    },
+    {
+      "name": "Redis down (cache, GEO index, pub/sub)",
+      "at_s": 74.7,
+      "duration_s": 9.5
+    },
+    {
+      "name": "shift change: 90% of couriers go offline",
+      "at_s": 112.0,
+      "duration_s": 14.0
+    },
+    {
+      "name": "ALL API instances killed",
+      "at_s": 165.3,
+      "duration_s": 10.8
+    },
+    {
+      "name": "PostgreSQL crash (immediate shutdown + WAL recovery)",
+      "at_s": 208.1,
+      "duration_s": 5.9
+    }
+  ],
+  "timeline": {
+    "bucket_s": 2,
+    "series": [
+      {
+        "t": 2.0,
+        "sent": 123,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 29,
+        "delivered": 16
+      },
+      {
+        "t": 4.0,
+        "sent": 186,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 33,
+        "delivered": 32
+      },
+      {
+        "t": 6.0,
+        "sent": 182,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 36,
+        "delivered": 33
+      },
+      {
+        "t": 8.0,
+        "sent": 174,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 31
+      },
+      {
+        "t": 10.0,
+        "sent": 221,
+        "retries": 0,
+        "errors": 0,
+        "created": 29,
+        "assigned": 31,
+        "delivered": 25
+      },
+      {
+        "t": 12.0,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 32
+      },
+      {
+        "t": 14.0,
+        "sent": 181,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 37,
+        "delivered": 31
+      },
+      {
+        "t": 16.0,
+        "sent": 199,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 31
+      },
+      {
+        "t": 18.0,
+        "sent": 194,
+        "retries": 0,
+        "errors": 0,
+        "created": 29,
+        "assigned": 31,
+        "delivered": 29
+      },
+      {
+        "t": 20.0,
+        "sent": 196,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 33,
+        "delivered": 30
+      },
+      {
+        "t": 22.0,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 27,
+        "delivered": 30
+      },
+      {
+        "t": 24.0,
+        "sent": 185,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 31
+      },
+      {
+        "t": 26.0,
+        "sent": 178,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 34,
+        "delivered": 28
+      },
+      {
+        "t": 28.0,
+        "sent": 182,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 29
+      },
+      {
+        "t": 30.0,
+        "sent": 208,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 28,
+        "delivered": 31
+      },
+      {
+        "t": 32.0,
+        "sent": 190,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 34,
+        "delivered": 31
+      },
+      {
+        "t": 34.0,
+        "sent": 74,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 0,
+        "delivered": 5
+      },
+      {
+        "t": 36.0,
+        "sent": 60,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 38.0,
+        "sent": 67,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 40.1,
+        "sent": 224,
+        "retries": 0,
+        "errors": 0,
+        "created": 26,
+        "assigned": 59,
+        "delivered": 18
+      },
+      {
+        "t": 42.1,
+        "sent": 304,
+        "retries": 0,
+        "errors": 0,
+        "created": 23,
+        "assigned": 83,
+        "delivered": 26
+      },
+      {
+        "t": 44.2,
+        "sent": 190,
+        "retries": 0,
+        "errors": 0,
+        "created": 21,
+        "assigned": 23,
+        "delivered": 32
+      },
+      {
+        "t": 46.2,
+        "sent": 179,
+        "retries": 0,
+        "errors": 0,
+        "created": 33,
+        "assigned": 30,
+        "delivered": 29
+      },
+      {
+        "t": 48.3,
+        "sent": 231,
+        "retries": 0,
+        "errors": 0,
+        "created": 35,
+        "assigned": 45,
+        "delivered": 46
+      },
+      {
+        "t": 50.4,
+        "sent": 157,
+        "retries": 0,
+        "errors": 0,
+        "created": 21,
+        "assigned": 20,
+        "delivered": 21
+      },
+      {
+        "t": 52.4,
+        "sent": 172,
+        "retries": 0,
+        "errors": 0,
+        "created": 38,
+        "assigned": 36,
+        "delivered": 20
+      },
+      {
+        "t": 54.5,
+        "sent": 208,
+        "retries": 0,
+        "errors": 0,
+        "created": 34,
+        "assigned": 40,
+        "delivered": 40
+      },
+      {
+        "t": 56.5,
+        "sent": 160,
+        "retries": 0,
+        "errors": 0,
+        "created": 21,
+        "assigned": 23,
+        "delivered": 19
+      },
+      {
+        "t": 58.5,
+        "sent": 167,
+        "retries": 0,
+        "errors": 0,
+        "created": 38,
+        "assigned": 31,
+        "delivered": 34
+      },
+      {
+        "t": 60.7,
+        "sent": 194,
+        "retries": 0,
+        "errors": 0,
+        "created": 27,
+        "assigned": 36,
+        "delivered": 31
+      },
+      {
+        "t": 62.8,
+        "sent": 131,
+        "retries": 0,
+        "errors": 0,
+        "created": 23,
+        "assigned": 24,
+        "delivered": 10
+      },
+      {
+        "t": 64.9,
+        "sent": 197,
+        "retries": 0,
+        "errors": 0,
+        "created": 41,
+        "assigned": 35,
+        "delivered": 28
+      },
+      {
+        "t": 66.9,
+        "sent": 206,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 36,
+        "delivered": 29
+      },
+      {
+        "t": 69.0,
+        "sent": 191,
+        "retries": 0,
+        "errors": 0,
+        "created": 29,
+        "assigned": 31,
+        "delivered": 34
+      },
+      {
+        "t": 71.1,
+        "sent": 258,
+        "retries": 0,
+        "errors": 0,
+        "created": 43,
+        "assigned": 48,
+        "delivered": 49
+      },
+      {
+        "t": 73.2,
+        "sent": 178,
+        "retries": 0,
+        "errors": 0,
+        "created": 19,
+        "assigned": 18,
+        "delivered": 28
+      },
+      {
+        "t": 75.2,
+        "sent": 148,
+        "retries": 0,
+        "errors": 0,
+        "created": 29,
+        "assigned": 28,
+        "delivered": 25
+      },
+      {
+        "t": 77.2,
+        "sent": 270,
+        "retries": 0,
+        "errors": 0,
+        "created": 46,
+        "assigned": 47,
+        "delivered": 70
+      },
+      {
+        "t": 79.2,
+        "sent": 311,
+        "retries": 0,
+        "errors": 0,
+        "created": 38,
+        "assigned": 39,
+        "delivered": 73
+      },
+      {
+        "t": 81.2,
+        "sent": 209,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 33,
+        "delivered": 39
+      },
+      {
+        "t": 83.2,
+        "sent": 167,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 32
+      },
+      {
+        "t": 85.3,
+        "sent": 184,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 32,
+        "delivered": 29
+      },
+      {
+        "t": 87.3,
+        "sent": 202,
+        "retries": 0,
+        "errors": 0,
+        "created": 27,
+        "assigned": 31,
+        "delivered": 31
+      },
+      {
+        "t": 89.3,
+        "sent": 217,
+        "retries": 0,
+        "errors": 0,
+        "created": 33,
+        "assigned": 35,
+        "delivered": 40
+      },
+      {
+        "t": 91.3,
+        "sent": 183,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 28
+      },
+      {
+        "t": 93.3,
+        "sent": 209,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 32
+      },
+      {
+        "t": 95.3,
+        "sent": 199,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 33,
+        "delivered": 29
+      },
+      {
+        "t": 97.3,
+        "sent": 186,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 29,
+        "delivered": 31
+      },
+      {
+        "t": 99.3,
+        "sent": 192,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 29,
+        "delivered": 30
+      },
+      {
+        "t": 101.3,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 28
+      },
+      {
+        "t": 103.3,
+        "sent": 187,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 33,
+        "delivered": 29
+      },
+      {
+        "t": 105.3,
+        "sent": 169,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 30
+      },
+      {
+        "t": 107.3,
+        "sent": 163,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 20
+      },
+      {
+        "t": 109.3,
+        "sent": 231,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 28,
+        "delivered": 40
+      },
+      {
+        "t": 111.3,
+        "sent": 190,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 37,
+        "delivered": 27
+      },
+      {
+        "t": 113.3,
+        "sent": 308,
+        "retries": 0,
+        "errors": 0,
+        "created": 23,
+        "assigned": 27,
+        "delivered": 21
+      },
+      {
+        "t": 115.3,
+        "sent": 203,
+        "retries": 0,
+        "errors": 0,
+        "created": 37,
+        "assigned": 32,
+        "delivered": 41
+      },
+      {
+        "t": 117.3,
+        "sent": 162,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 28
+      },
+      {
+        "t": 119.3,
+        "sent": 193,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 34,
+        "delivered": 33
+      },
+      {
+        "t": 121.3,
+        "sent": 189,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 34,
+        "delivered": 29
+      },
+      {
+        "t": 123.3,
+        "sent": 172,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 30
+      },
+      {
+        "t": 125.3,
+        "sent": 168,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 33,
+        "delivered": 29
+      },
+      {
+        "t": 127.3,
+        "sent": 343,
+        "retries": 0,
+        "errors": 0,
+        "created": 16,
+        "assigned": 18,
+        "delivered": 15
+      },
+      {
+        "t": 129.3,
+        "sent": 257,
+        "retries": 0,
+        "errors": 0,
+        "created": 45,
+        "assigned": 43,
+        "delivered": 41
+      },
+      {
+        "t": 131.3,
+        "sent": 187,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 31
+      },
+      {
+        "t": 133.3,
+        "sent": 169,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 30
+      },
+      {
+        "t": 135.3,
+        "sent": 168,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 33,
+        "delivered": 30
+      },
+      {
+        "t": 137.3,
+        "sent": 184,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 28
+      },
+      {
+        "t": 139.3,
+        "sent": 218,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 31
+      },
+      {
+        "t": 141.3,
+        "sent": 180,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 30
+      },
+      {
+        "t": 143.3,
+        "sent": 185,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 30
+      },
+      {
+        "t": 145.3,
+        "sent": 187,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 30
+      },
+      {
+        "t": 147.3,
+        "sent": 186,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 33,
+        "delivered": 27
+      },
+      {
+        "t": 149.3,
+        "sent": 199,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 31
+      },
+      {
+        "t": 151.3,
+        "sent": 197,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 34,
+        "delivered": 29
+      },
+      {
+        "t": 153.3,
+        "sent": 199,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 34,
+        "delivered": 30
+      },
+      {
+        "t": 155.3,
+        "sent": 196,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 31
+      },
+      {
+        "t": 157.3,
+        "sent": 190,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 29
+      },
+      {
+        "t": 159.3,
+        "sent": 191,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 30
+      },
+      {
+        "t": 161.3,
+        "sent": 202,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 31
+      },
+      {
+        "t": 163.3,
+        "sent": 179,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 29
+      },
+      {
+        "t": 165.3,
+        "sent": 191,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 31,
+        "delivered": 30
+      },
+      {
+        "t": 167.3,
+        "sent": 158,
+        "retries": 97,
+        "errors": 97,
+        "created": 19,
+        "assigned": 19,
+        "delivered": 6
+      },
+      {
+        "t": 169.3,
+        "sent": 197,
+        "retries": 198,
+        "errors": 198,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 171.3,
+        "sent": 256,
+        "retries": 255,
+        "errors": 255,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 173.3,
+        "sent": 302,
+        "retries": 303,
+        "errors": 303,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 175.3,
+        "sent": 249,
+        "retries": 248,
+        "errors": 248,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 177.3,
+        "sent": 306,
+        "retries": 52,
+        "errors": 52,
+        "created": 92,
+        "assigned": 61,
+        "delivered": 8
+      },
+      {
+        "t": 179.4,
+        "sent": 421,
+        "retries": 0,
+        "errors": 0,
+        "created": 62,
+        "assigned": 93,
+        "delivered": 23
+      },
+      {
+        "t": 181.4,
+        "sent": 334,
+        "retries": 0,
+        "errors": 0,
+        "created": 44,
+        "assigned": 49,
+        "delivered": 30
+      },
+      {
+        "t": 183.4,
+        "sent": 311,
+        "retries": 0,
+        "errors": 0,
+        "created": 36,
+        "assigned": 40,
+        "delivered": 54
+      },
+      {
+        "t": 185.4,
+        "sent": 286,
+        "retries": 1,
+        "errors": 1,
+        "created": 31,
+        "assigned": 36,
+        "delivered": 60
+      },
+      {
+        "t": 187.6,
+        "sent": 211,
+        "retries": 0,
+        "errors": 0,
+        "created": 24,
+        "assigned": 29,
+        "delivered": 44
+      },
+      {
+        "t": 189.8,
+        "sent": 95,
+        "retries": 0,
+        "errors": 0,
+        "created": 22,
+        "assigned": 20,
+        "delivered": 11
+      },
+      {
+        "t": 191.9,
+        "sent": 174,
+        "retries": 1,
+        "errors": 1,
+        "created": 45,
+        "assigned": 35,
+        "delivered": 27
+      },
+      {
+        "t": 193.9,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 29,
+        "assigned": 44,
+        "delivered": 21
+      },
+      {
+        "t": 196.1,
+        "sent": 197,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 28,
+        "delivered": 26
+      },
+      {
+        "t": 198.5,
+        "sent": 238,
+        "retries": 0,
+        "errors": 0,
+        "created": 47,
+        "assigned": 36,
+        "delivered": 56
+      },
+      {
+        "t": 200.6,
+        "sent": 160,
+        "retries": 0,
+        "errors": 0,
+        "created": 10,
+        "assigned": 26,
+        "delivered": 17
+      },
+      {
+        "t": 202.8,
+        "sent": 82,
+        "retries": 0,
+        "errors": 0,
+        "created": 15,
+        "assigned": 15,
+        "delivered": 11
+      },
+      {
+        "t": 204.8,
+        "sent": 222,
+        "retries": 0,
+        "errors": 0,
+        "created": 63,
+        "assigned": 32,
+        "delivered": 40
+      },
+      {
+        "t": 206.9,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 25,
+        "assigned": 60,
+        "delivered": 22
+      },
+      {
+        "t": 209.0,
+        "sent": 133,
+        "retries": 35,
+        "errors": 35,
+        "created": 15,
+        "assigned": 19,
+        "delivered": 15
+      },
+      {
+        "t": 211.0,
+        "sent": 446,
+        "retries": 618,
+        "errors": 618,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 213.0,
+        "sent": 296,
+        "retries": 302,
+        "errors": 302,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 215.0,
+        "sent": 301,
+        "retries": 75,
+        "errors": 75,
+        "created": 89,
+        "assigned": 0,
+        "delivered": 33
+      },
+      {
+        "t": 217.0,
+        "sent": 429,
+        "retries": 0,
+        "errors": 0,
+        "created": 37,
+        "assigned": 91,
+        "delivered": 37
+      },
+      {
+        "t": 219.1,
+        "sent": 295,
+        "retries": 0,
+        "errors": 0,
+        "created": 48,
+        "assigned": 45,
+        "delivered": 35
+      },
+      {
+        "t": 221.1,
+        "sent": 257,
+        "retries": 0,
+        "errors": 0,
+        "created": 34,
+        "assigned": 51,
+        "delivered": 54
+      },
+      {
+        "t": 223.2,
+        "sent": 273,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 55,
+        "delivered": 51
+      },
+      {
+        "t": 225.2,
+        "sent": 263,
+        "retries": 0,
+        "errors": 0,
+        "created": 33,
+        "assigned": 44,
+        "delivered": 52
+      },
+      {
+        "t": 227.3,
+        "sent": 163,
+        "retries": 0,
+        "errors": 0,
+        "created": 24,
+        "assigned": 20,
+        "delivered": 38
+      },
+      {
+        "t": 229.3,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 33,
+        "assigned": 37,
+        "delivered": 32
+      },
+      {
+        "t": 231.4,
+        "sent": 245,
+        "retries": 0,
+        "errors": 0,
+        "created": 36,
+        "assigned": 39,
+        "delivered": 39
+      },
+      {
+        "t": 233.5,
+        "sent": 195,
+        "retries": 0,
+        "errors": 0,
+        "created": 28,
+        "assigned": 27,
+        "delivered": 39
+      },
+      {
+        "t": 235.5,
+        "sent": 181,
+        "retries": 0,
+        "errors": 0,
+        "created": 39,
+        "assigned": 42,
+        "delivered": 46
+      },
+      {
+        "t": 237.5,
+        "sent": 253,
+        "retries": 0,
+        "errors": 0,
+        "created": 31,
+        "assigned": 34,
+        "delivered": 46
+      },
+      {
+        "t": 239.6,
+        "sent": 137,
+        "retries": 0,
+        "errors": 0,
+        "created": 17,
+        "assigned": 17,
+        "delivered": 27
+      },
+      {
+        "t": 241.7,
+        "sent": 137,
+        "retries": 0,
+        "errors": 0,
+        "created": 35,
+        "assigned": 23,
+        "delivered": 25
+      },
+      {
+        "t": 243.7,
+        "sent": 266,
+        "retries": 0,
+        "errors": 0,
+        "created": 40,
+        "assigned": 53,
+        "delivered": 34
+      },
+      {
+        "t": 245.8,
+        "sent": 228,
+        "retries": 0,
+        "errors": 0,
+        "created": 33,
+        "assigned": 37,
+        "delivered": 60
+      },
+      {
+        "t": 247.8,
+        "sent": 252,
+        "retries": 0,
+        "errors": 0,
+        "created": 33,
+        "assigned": 32,
+        "delivered": 55
+      },
+      {
+        "t": 249.8,
+        "sent": 261,
+        "retries": 0,
+        "errors": 0,
+        "created": 37,
+        "assigned": 40,
+        "delivered": 64
+      },
+      {
+        "t": 251.8,
+        "sent": 168,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 30
+      },
+      {
+        "t": 253.8,
+        "sent": 177,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 31
+      },
+      {
+        "t": 255.8,
+        "sent": 187,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 28
+      },
+      {
+        "t": 257.8,
+        "sent": 183,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 35,
+        "delivered": 30
+      },
+      {
+        "t": 259.8,
+        "sent": 204,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 30,
+        "delivered": 31
+      },
+      {
+        "t": 261.8,
+        "sent": 160,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 25
+      },
+      {
+        "t": 263.8,
+        "sent": 188,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 37,
+        "delivered": 29
+      },
+      {
+        "t": 265.8,
+        "sent": 202,
+        "retries": 0,
+        "errors": 0,
+        "created": 30,
+        "assigned": 32,
+        "delivered": 31
+      },
+      {
+        "t": 267.8,
+        "sent": 130,
+        "retries": 0,
+        "errors": 0,
+        "created": 13,
+        "assigned": 15,
+        "delivered": 22
+      },
+      {
+        "t": 269.8,
+        "sent": 22,
+        "retries": 0,
+        "errors": 0,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      },
+      {
+        "t": 271.8,
+        "sent": 17,
+        "retries": 0,
+        "errors": 0,
+        "created": 0,
+        "assigned": 0,
+        "delivered": 0
+      }
+    ]
+  },
+  "invariants": [
+    {
+      "name": "one order per idempotency key",
+      "passed": true,
+      "detail": "4000 unique keys sent -> 4000 orders stored"
+    },
+    {
+      "name": "every order reached a terminal state",
+      "passed": true,
+      "detail": "0 stuck; by status: {'CANCELLED': 69, 'DELIVERED': 3931}"
+    },
+    {
+      "name": "no transition recorded twice (created/picked_up/delivered/cancelled/failed)",
+      "passed": true,
+      "detail": "0 duplicated"
+    },
+    {
+      "name": "assignment history is consistent (assigned - reassigned in {0,1})",
+      "passed": true,
+      "detail": "0 orders inconsistent"
+    },
+    {
+      "name": "delivered orders have a courier and monotonic timestamps",
+      "passed": true,
+      "detail": "0 malformed"
+    },
+    {
+      "name": "no courier was ever double-booked (event-log replay)",
+      "passed": true,
+      "detail": "0 couriers with overlapping jobs"
+    },
+    {
+      "name": "courier and order rows agree (no leaked or orphaned assignments)",
+      "passed": true,
+      "detail": "0 bad courier rows, 0 orphaned orders"
+    },
+    {
+      "name": "event log starts with order.created for every order",
+      "passed": true,
+      "detail": "0 violations"
+    },
+    {
+      "name": "outbox fully relayed to SQS",
+      "passed": true,
+      "detail": "0 unpublished rows"
+    },
+    {
+      "name": "every persisted event was delivered over WebSocket (incl. replay after reconnect)",
+      "passed": true,
+      "detail": "20461/20461 delivered, 0 missing"
+    },
+    {
+      "name": "SQS main queue fully drained",
+      "passed": true,
+      "detail": "depth={'visible': 0, 'in_flight': 0, 'delayed': 0}"
+    },
+    {
+      "name": "dead-letter queue empty after reaping",
+      "passed": true,
+      "detail": "depth={'visible': 0, 'in_flight': 0, 'delayed': 0}"
+    },
+    {
+      "name": "poison messages were parked in the DLQ and reaped",
+      "passed": true,
+      "detail": "6 injected, dead_lettered counter=6"
+    }
+  ],
+  "invariants_passed": true,
+  "server_reliability_counters": {
+    "duplicates_absorbed": 2084,
+    "stale_ignored": 192,
+    "assignment_retries": 108,
+    "reassignments": 141,
+    "assignment_timeouts": 0,
+    "orders_redriven": 0,
+    "orders_failed": 0,
+    "dead_lettered": 6
+  }
+}

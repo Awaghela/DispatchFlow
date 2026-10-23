@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DispatchFlowQueues",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:GetQueueAttributes",
+        "sqs:GetQueueUrl"
+      ],
+      "Resource": [
+        "arn:aws:sqs:REGION:ACCOUNT_ID:dispatchflow-orders",
+        "arn:aws:sqs:REGION:ACCOUNT_ID:dispatchflow-orders-dlq"
+      ]
+    }
+  ]
+}

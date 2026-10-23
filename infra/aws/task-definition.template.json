@@ -1,0 +1,39 @@
+{
+  "family": "dispatchflow-${ROLE}",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "runtimePlatform": { "cpuArchitecture": "${CPU_ARCH}", "operatingSystemFamily": "LINUX" },
+  "executionRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/dispatchflow-execution",
+  "taskRoleArn": "arn:aws:iam::${ACCOUNT_ID}:role/dispatchflow-${ROLE}-task",
+  "containerDefinitions": [
+    {
+      "name": "${ROLE}",
+      "image": "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/dispatchflow:${IMAGE_TAG}",
+      "essential": true,
+      "command": ${COMMAND},
+      "portMappings": [{ "containerPort": 8000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "AWS_REGION", "value": "${AWS_REGION}" },
+        { "name": "REDIS_URL", "value": "${REDIS_URL}" },
+        { "name": "SQS_QUEUE_URL", "value": "${SQS_QUEUE_URL}" },
+        { "name": "SQS_DLQ_URL", "value": "${SQS_DLQ_URL}" },
+        { "name": "SQS_AUTO_CREATE", "value": "false" },
+        { "name": "SQS_WAIT_SECONDS", "value": "20" },
+        { "name": "ENVIRONMENT", "value": "production" }
+      ],
+      "secrets": [
+        { "name": "DATABASE_URL", "valueFrom": "${DATABASE_URL_SECRET_ARN}" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/dispatchflow/${ROLE}",
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

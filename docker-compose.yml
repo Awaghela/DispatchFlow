@@ -1,0 +1,103 @@
+# Everything you need on a laptop:  docker compose up --build
+#   dashboard   http://localhost:8000          API docs   http://localhost:8000/docs
+#   Prometheus  http://localhost:9090          Grafana    http://localhost:3000  (admin / admin)
+#   demo traffic (couriers driving around):    docker compose --profile demo up
+#
+# SQS is emulated by LocalStack; on AWS you drop AWS_ENDPOINT_URL and use the real service (docs/AWS_SETUP.md).
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql+asyncpg://dispatch:dispatch@postgres:5432/dispatchflow
+  REDIS_URL: redis://redis:6379/0
+  AWS_ENDPOINT_URL: http://localstack:4566
+  AWS_REGION: us-east-1
+  AWS_ACCESS_KEY_ID: test
+  AWS_SECRET_ACCESS_KEY: test
+  SQS_AUTO_CREATE: "true"
+  LOG_LEVEL: INFO
+  WORKER_METRICS_URL: http://worker:9102/metrics
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dispatch
+      POSTGRES_PASSWORD: dispatch
+      POSTGRES_DB: dispatchflow
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dispatch -d dispatchflow"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  localstack:
+    image: localstack/localstack:3
+    environment:
+      SERVICES: sqs
+    ports: ["4566:4566"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health | grep -q '\"sqs\": \"\\(available\\|running\\)\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    environment: *app-env
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      localstack: {condition: service_healthy}
+    restart: unless-stopped
+
+  worker:
+    build: .
+    command: ["python", "-m", "app.worker"]
+    environment: *app-env
+    ports: ["9102:9102"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      localstack: {condition: service_healthy}
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes: ["./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+    depends_on: [api, worker]
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
+
+  # Optional: couriers drive around and orders keep arriving so the dashboard is alive.
+  demo:
+    build: .
+    profiles: ["demo"]
+    command: ["python", "-m", "loadtest.run", "--mode", "demo", "--apis", "http://api:8000", "--couriers", "45", "--demo-interval", "0.7"]
+    environment: *app-env
+    depends_on: [api, worker]
+
+volumes:
+  pgdata:
